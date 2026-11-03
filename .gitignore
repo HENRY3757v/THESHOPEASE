@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+shopify-app/node_modules/
+shopify-backend/node_modules/
+
+# Environment Variables
+.env
+*.env
+
+# Build outputs
+shopify-app/dist/
+dist/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
