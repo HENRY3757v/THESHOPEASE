@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from '../config'
 import {
   ShoppingBag,
   Search,
@@ -75,7 +76,7 @@ function Shop() {
 
   // Load Categories list
   useEffect(() => {
-    fetch('http://localhost:5000/api/categories')
+    fetch(`${API_BASE_URL}/api/categories`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -88,8 +89,8 @@ function Shop() {
   // Load Brands dynamically for the selected category
   useEffect(() => {
     const url = selectedCategory && selectedCategory !== 'All'
-      ? `http://localhost:5000/api/brands?category=${encodeURIComponent(selectedCategory)}`
-      : 'http://localhost:5000/api/brands'
+      ? `${API_BASE_URL}/api/brands?category=${encodeURIComponent(selectedCategory)}`
+      : `${API_BASE_URL}/api/brands`
 
     fetch(url)
       .then((res) => res.json())
@@ -130,7 +131,7 @@ function Shop() {
           params.append('search', debouncedSearch.trim())
         }
 
-        const res = await fetch(`http://localhost:5000/api/products?${params.toString()}`)
+        const res = await fetch(`${API_BASE_URL}/api/products?${params.toString()}`)
         const data = await res.json()
         if (data.products) {
           setProducts(data.products)
@@ -239,7 +240,7 @@ function Shop() {
 
     setIsPlacingOrder(true)
     try {
-      const res = await fetch('http://localhost:5000/api/orders', {
+      const res = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

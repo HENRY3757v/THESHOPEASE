@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Package, ArrowLeft, Truck, Calendar, ShoppingBag, Clock, CheckCircle2, User } from 'lucide-react'
+import { API_BASE_URL } from '../config'
 
 function Orders() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ function Orders() {
   const fetchOrders = async (userId) => {
     setLoading(true)
     try {
-      const url = userId ? `http://localhost:5000/api/orders?userId=${userId}` : 'http://localhost:5000/api/orders'
+      const url = userId ? `${API_BASE_URL}/api/orders?userId=${userId}` : `${API_BASE_URL}/api/orders`
       const res = await fetch(url)
       const data = await res.json()
       setOrders(data.orders || [])

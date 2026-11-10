@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ShoppingBag, ArrowLeft, RefreshCw, Users, Mail, Phone, MapPin, Calendar } from 'lucide-react'
+import { API_BASE_URL } from '../config'
 
 function UsersList() {
   const [users, setUsers] = useState([])
@@ -11,7 +12,7 @@ function UsersList() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('http://localhost:5000/api/users')
+      const res = await fetch(`${API_BASE_URL}/api/users`)
       if (!res.ok) throw new Error('Could not fetch users from database.')
       const data = await res.json()
       setUsers(data.users || [])

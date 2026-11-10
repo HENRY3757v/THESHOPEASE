@@ -1,39 +1,42 @@
 import express from 'express'
 import cors from 'cors'
-import mysql from 'mysql2/promise'
+import pg from 'pg'
 import bcrypt from 'bcryptjs'
+import dotenv from 'dotenv'
 
+dotenv.config()
+
+const { Pool } = pg
 const app = express()
-const PORT = 5000
+const PORT = process.env.PORT || 5000
 
 // Middleware
 app.use(cors())
 app.use(express.json())
 
-// MySQL Connection Pool
-const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: 'dsa',
-  database: 'shopify_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+// PostgreSQL Connection Pool (Supabase or custom DATABASE_URL)
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgresql://postgres.shaxsnjcircagqdggbwg:LEODAS8777%40@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres'
+
+const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
 })
 
 // Test Connection
-pool.getConnection()
-  .then((conn) => {
-    console.log('✅ Connected to MySQL database (shopify_db) successfully!')
-    conn.release()
+pool.connect()
+  .then((client) => {
+    console.log('✅ Connected to PostgreSQL database (Supabase) successfully!')
+    client.release()
   })
   .catch((err) => {
-    console.error('❌ Failed to connect to MySQL:', err.message)
+    console.error('❌ Failed to connect to PostgreSQL:', err.message)
   })
 
 // Health Check
 app.get('/', (req, res) => {
-  res.send({ status: 'Online', message: 'ShopEase API is running!' })
+  res.send({ status: 'Online', message: 'ShopEase API is running with Supabase PostgreSQL!' })
 })
 
 // 1. REGISTER USER
@@ -46,8 +49,8 @@ app.post('/api/register', async (req, res) => {
 
   try {
     // Check if user already exists
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email])
-    if (existing.length > 0) {
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email])
+    if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'An account with this email already exists.' })
     }
 
@@ -55,19 +58,21 @@ app.post('/api/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Insert user
-    const [result] = await pool.query(
-      'INSERT INTO users (name, email, phone, address, password) VALUES (?, ?, ?, ?, ?)',
+    const result = await pool.query(
+      `INSERT INTO users (name, email, phone, address, password) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [name, email, phone, address, hashedPassword]
     )
 
-    console.log(`[USER REGISTERED] ID: ${result.insertId}, Name: ${name}, Email: ${email}`)
+    const userId = result.rows[0].id
+    console.log(`[USER REGISTERED] ID: ${userId}, Name: ${name}, Email: ${email}`)
 
     return res.status(201).json({
       success: true,
       message: 'User registered successfully!',
-      userId: result.insertId,
+      userId,
       user: {
-        id: result.insertId,
+        id: userId,
         name,
         email,
         phone,
@@ -89,12 +94,12 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email])
-    if (rows.length === 0) {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+    if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
 
-    const user = rows[0]
+    const user = result.rows[0]
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password.' })
@@ -120,10 +125,10 @@ app.post('/api/login', async (req, res) => {
 // 3. GET ALL USERS (To view stored database records)
 app.get('/api/users', async (req, res) => {
   try {
-    const [users] = await pool.query(
+    const result = await pool.query(
       'SELECT id, name, email, phone, address, created_at FROM users ORDER BY created_at DESC'
     )
-    res.json({ total: users.length, users })
+    res.json({ total: result.rows.length, users: result.rows })
   } catch (err) {
     console.error('Fetch users error:', err)
     res.status(500).json({ error: 'Failed to retrieve users.' })
@@ -141,14 +146,14 @@ app.post('/api/orders', async (req, res) => {
   try {
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
     
-    // Calculate estimated delivery date (e.g. 2-3 days from today)
+    // Calculate estimated delivery date
     const deliveryDateObj = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000)
-    const deliveryDate = deliveryDateObj.toISOString().split('T')[0] // 'YYYY-MM-DD'
+    const deliveryDate = deliveryDateObj.toISOString().split('T')[0]
 
-    const [result] = await pool.query(
+    const result = await pool.query(
       `INSERT INTO orders 
       (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
       [
         orderNumber,
         userId,
@@ -163,13 +168,14 @@ app.post('/api/orders', async (req, res) => {
       ]
     )
 
+    const orderId = result.rows[0].id
     console.log(`[ORDER CREATED] ${orderNumber} for ${userName} (${userEmail}) - Total: ₹${totalAmount}`)
 
     return res.status(201).json({
       success: true,
       message: 'Order placed successfully!',
       order: {
-        id: result.insertId,
+        id: orderId,
         orderNumber,
         userName,
         userEmail,
@@ -194,12 +200,12 @@ app.get('/api/orders', async (req, res) => {
     let params = []
 
     if (userId) {
-      query = 'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
+      query = 'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC'
       params = [userId]
     }
 
-    const [orders] = await pool.query(query, params)
-    res.json({ total: orders.length, orders })
+    const result = await pool.query(query, params)
+    res.json({ total: result.rows.length, orders: result.rows })
   } catch (err) {
     console.error('Fetch orders error:', err)
     res.status(500).json({ error: 'Failed to retrieve orders.' })
@@ -216,21 +222,23 @@ app.get('/api/products', async (req, res) => {
 
     const conditions = []
     const params = []
+    let paramIndex = 1
 
     if (category && category !== 'All') {
-      conditions.push('category = ?')
+      conditions.push(`category = $${paramIndex++}`)
       params.push(category)
     }
 
     if (brand && brand !== 'All') {
-      conditions.push('brand = ?')
+      conditions.push(`brand = $${paramIndex++}`)
       params.push(brand)
     }
 
     if (search && search.trim()) {
-      conditions.push('(name LIKE ? OR brand LIKE ? OR category LIKE ?)')
       const q = `%${search.trim()}%`
-      params.push(q, q, q)
+      conditions.push(`(name ILIKE $${paramIndex} OR brand ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`)
+      params.push(q)
+      paramIndex++
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -240,22 +248,22 @@ app.get('/api/products', async (req, res) => {
     if (sortBy === 'price_low') orderBy = 'ORDER BY price ASC'
     else if (sortBy === 'price_high') orderBy = 'ORDER BY price DESC'
     else if (sortBy === 'rating') orderBy = 'ORDER BY rating DESC'
-    else if (sortBy === 'discount') orderBy = 'ORDER BY CAST(REPLACE(discount, "% OFF", "") AS UNSIGNED) DESC'
+    else if (sortBy === 'discount') orderBy = "ORDER BY CAST(REPLACE(discount, '% OFF', '') AS INTEGER) DESC"
 
     // Total count query
-    const [countRows] = await pool.query(`SELECT COUNT(*) as count FROM products ${whereClause}`, params)
-    const totalCount = countRows[0].count
+    const countResult = await pool.query(`SELECT COUNT(*) as count FROM products ${whereClause}`, params)
+    const totalCount = parseInt(countResult.rows[0].count, 10)
 
-    // Data query with LIMIT & OFFSET (Parameterized as numbers)
-    const dataQuery = `SELECT * FROM products ${whereClause} ${orderBy} LIMIT ? OFFSET ?`
-    const [products] = await pool.query(dataQuery, [...params, limit, offset])
+    // Data query with LIMIT & OFFSET
+    const dataQuery = `SELECT * FROM products ${whereClause} ${orderBy} LIMIT $${paramIndex++} OFFSET $${paramIndex++}`
+    const dataResult = await pool.query(dataQuery, [...params, limit, offset])
 
     res.json({
       page,
       limit,
       totalCount,
       totalPages: Math.ceil(totalCount / limit),
-      products,
+      products: dataResult.rows,
     })
   } catch (err) {
     console.error('Fetch products error:', err)
@@ -266,10 +274,10 @@ app.get('/api/products', async (req, res) => {
 // 7. GET CATEGORIES (With counts)
 app.get('/api/categories', async (req, res) => {
   try {
-    const [categories] = await pool.query(
+    const result = await pool.query(
       'SELECT category, COUNT(*) as count FROM products GROUP BY category ORDER BY count DESC'
     )
-    res.json(categories)
+    res.json(result.rows)
   } catch (err) {
     console.error('Fetch categories error:', err)
     res.status(500).json({ error: 'Failed to retrieve categories.' })
@@ -283,12 +291,12 @@ app.get('/api/brands', async (req, res) => {
     let query = 'SELECT brand, COUNT(*) as count FROM products'
     const params = []
     if (category && category !== 'All') {
-      query += ' WHERE category = ?'
+      query += ' WHERE category = $1'
       params.push(category)
     }
     query += ' GROUP BY brand ORDER BY count DESC'
-    const [brands] = await pool.query(query, params)
-    res.json(brands)
+    const result = await pool.query(query, params)
+    res.json(result.rows)
   } catch (err) {
     console.error('Fetch brands error:', err)
     res.status(500).json({ error: 'Failed to retrieve brands.' })
