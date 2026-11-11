@@ -39,6 +39,11 @@ import {
   Wind,
   Flame,
   BadgePercent,
+  Store,
+  Sofa,
+  Gem,
+  ShoppingBasket,
+  Car,
 } from 'lucide-react'
 
 import DeliveryWelcomeAnimation from '../components/DeliveryWelcomeAnimation'
@@ -52,6 +57,7 @@ const CATEGORY_ICONS = {
   Mobiles: Smartphone,
   Laptops: Laptop,
   'Home & Kitchen': Utensils,
+  'Home & Decor': Sofa,
   Electronics: Headphones,
   Headphones: Headphones,
   Tablets: Tablet,
@@ -65,6 +71,10 @@ const CATEGORY_ICONS = {
   Gaming: Gamepad2,
   Fashion: Shirt,
   Footwear: Footprints,
+  'Beauty & Care': Sparkles,
+  'Jewellery & Eyewear': Gem,
+  Groceries: ShoppingBasket,
+  'Sports & Auto': Car,
 }
 
 const CATEGORY_GRADIENTS = {
@@ -132,6 +142,46 @@ const CATEGORY_GRADIENTS = {
     active: 'from-sky-500 to-cyan-700 shadow-sky-500/30',
     idle: 'border-sky-200 text-sky-700 hover:border-sky-400 hover:bg-sky-50/70',
     iconBg: 'bg-sky-50 text-sky-600',
+  },
+  'Home & Kitchen': {
+    active: 'from-orange-500 to-amber-600 shadow-orange-500/30',
+    idle: 'border-orange-200 text-orange-700 hover:border-orange-400 hover:bg-orange-50/70',
+    iconBg: 'bg-orange-50 text-orange-600',
+  },
+  'Home & Decor': {
+    active: 'from-amber-600 to-yellow-700 shadow-amber-500/30',
+    idle: 'border-amber-200 text-amber-800 hover:border-amber-400 hover:bg-amber-50/70',
+    iconBg: 'bg-amber-50 text-amber-700',
+  },
+  Fashion: {
+    active: 'from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30',
+    idle: 'border-fuchsia-200 text-fuchsia-700 hover:border-fuchsia-400 hover:bg-fuchsia-50/70',
+    iconBg: 'bg-fuchsia-50 text-fuchsia-600',
+  },
+  Footwear: {
+    active: 'from-rose-500 to-red-600 shadow-rose-500/30',
+    idle: 'border-rose-200 text-rose-700 hover:border-rose-400 hover:bg-rose-50/70',
+    iconBg: 'bg-rose-50 text-rose-600',
+  },
+  'Beauty & Care': {
+    active: 'from-rose-400 to-pink-600 shadow-rose-400/30',
+    idle: 'border-rose-200 text-rose-700 hover:border-rose-400 hover:bg-rose-50/70',
+    iconBg: 'bg-rose-50 text-rose-500',
+  },
+  'Jewellery & Eyewear': {
+    active: 'from-yellow-500 to-amber-600 shadow-yellow-500/30',
+    idle: 'border-yellow-300 text-amber-800 hover:border-amber-400 hover:bg-amber-50/70',
+    iconBg: 'bg-amber-50 text-amber-600',
+  },
+  Groceries: {
+    active: 'from-lime-600 to-green-700 shadow-lime-500/30',
+    idle: 'border-lime-200 text-green-700 hover:border-lime-400 hover:bg-lime-50/70',
+    iconBg: 'bg-lime-50 text-green-700',
+  },
+  'Sports & Auto': {
+    active: 'from-slate-700 to-zinc-900 shadow-slate-500/30',
+    idle: 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50',
+    iconBg: 'bg-slate-100 text-slate-700',
   },
 }
 
@@ -469,7 +519,7 @@ function Shop() {
                   </span>
                 </span>
                 <span className="text-[10px] text-slate-400 font-semibold tracking-wider hidden sm:block mt-0.5">
-                  BRAND DIRECT • 2,400+ ITEMS
+                  ORIGINAL PICS • SELLER MARKETPLACE
                 </span>
               </div>
             </div>
@@ -508,7 +558,16 @@ function Shop() {
             </div>
 
             {/* Right Nav Actions */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+              {/* Sell on ShopEase CTA Button */}
+              <Link
+                to="/seller"
+                className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 text-xs font-black px-3.5 py-2 rounded-full shadow-lg shadow-amber-500/20 transition active:scale-95"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Sell (₹20/day)</span>
+              </Link>
+
               {/* Connect UPI Quick Button */}
               {currentUser && (
                 <button
@@ -1155,6 +1214,14 @@ function Shop() {
               {totalItemsCount}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => navigate('/seller')}
+          className="flex flex-col items-center text-amber-600 hover:text-amber-700"
+        >
+          <Store className="w-5 h-5" />
+          <span className="text-[10px] font-extrabold mt-0.5">Sell</span>
         </button>
 
         <button

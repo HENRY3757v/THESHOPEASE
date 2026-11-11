@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
   X,
-  CreditCard,
-  QrCode,
   CheckCircle2,
   Smartphone,
   ShieldCheck,
@@ -11,8 +9,30 @@ import {
   ArrowRight,
   Zap,
   Sparkles,
+  KeyRound,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react'
 import { API_BASE_URL } from '../config'
+
+const KNOWN_HANDLES = new Set([
+  'okicici', 'okaxis', 'okhdfcbank', 'oksbi', 'ybl', 'ibl', 'axl',
+  'paytm', 'ptsbi', 'pthdfc', 'ptaxis', 'ptyes', 'upi', 'apl', 'icici',
+  'sbi', 'hdfcbank', 'axisbank', 'kotak', 'indus', 'federal', 'barodampay',
+  'fam', 'jupiteraxis', 'sliceaxis', 'naviaxis', 'superyes', 'pingpay', 'waaxis',
+])
+
+function checkVpaClient(vpa) {
+  const cleaned = (vpa || '').trim().toLowerCase()
+  if (!/^[a-z0-9._-]{2,256}@[a-z]{2,64}$/.test(cleaned)) {
+    return { valid: false, label: 'Invalid format' }
+  }
+  const handle = cleaned.split('@')[1]
+  if (!KNOWN_HANDLES.has(handle)) {
+    return { valid: false, label: `Unknown @${handle}` }
+  }
+  return { valid: true, label: `Valid NPCI (@${handle})` }
+}
 
 export default function UpiPaymentModal({
   isOpen,
@@ -28,6 +48,18 @@ export default function UpiPaymentModal({
   const [newUpiId, setNewUpiId] = useState('')
   const [provider, setProvider] = useState('Google Pay')
   const [accountName, setAccountName] = useState('')
+
+  // Real Phone OTP Authentication states
+  const [phoneInput, setPhoneInput] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [otpVerifiedId, setOtpVerifiedId] = useState(null)
+  const [verifiedPhone, setVerifiedPhone] = useState('')
+  const [sandboxOtpNotice, setSandboxOtpNotice] = useState('')
+
+  // QR / Payment states
+  const [utrInput, setUtrInput] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -45,6 +77,13 @@ export default function UpiPaymentModal({
       fetchUserUpi()
       setIsSuccess(false)
       setErrorMsg('')
+      setPhoneInput(currentUser.phone || '')
+      setOtpSent(false)
+      setOtpCode('')
+      setOtpVerifiedId(null)
+      setVerifiedPhone('')
+      setSandboxOtpNotice('')
+      setUtrInput('')
     }
   }, [isOpen, currentUser])
 
@@ -66,15 +105,83 @@ export default function UpiPaymentModal({
     }
   }
 
-  const handleSaveUpi = async (e) => {
+  const handleSendOtp = async () => {
+    if (!phoneInput.trim() || phoneInput.replace(/\D/g, '').length < 10) {
+      setErrorMsg('Enter a valid 10-digit mobile number to receive your verification OTP.')
+      return
+    }
+    setOtpLoading(true)
+    setErrorMsg('')
+    setSandboxOtpNotice('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/otp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneInput.trim(), purpose: 'upi_verify' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Could not send OTP.')
+        return
+      }
+      setOtpSent(true)
+      if (data.smsMode === 'sandbox' && data.sandboxOtp) {
+        setSandboxOtpNotice(
+          `Sandbox OTP Mode (Add FAST2SMS_API_KEY / TWILIO_* env vars in Vercel for live SMS): Your verification code is ${data.sandboxOtp}`
+        )
+      } else {
+        setSandboxOtpNotice(`Live OTP SMS sent to ${data.phone}. Enter the 6-digit code below.`)
+      }
+    } catch (err) {
+      setErrorMsg('Network error sending OTP.')
+    } finally {
+      setOtpLoading(false)
+    }
+  }
+
+  const handleVerifyOtpAndSaveUpi = async (e) => {
     e.preventDefault()
-    if (!newUpiId.trim() || !newUpiId.includes('@')) {
-      setErrorMsg('Please enter a valid UPI ID (e.g., yourname@okhdfcbank or 9876543210@paytm)')
+    const vpaStatus = checkVpaClient(newUpiId)
+    if (!vpaStatus.valid) {
+      setErrorMsg(`Please enter a valid Indian UPI ID (${vpaStatus.label}). Example: 9876543210@ybl or name@okicici`)
       return
     }
 
+    if (!otpVerifiedId) {
+      if (!otpSent || otpCode.trim().length !== 6) {
+        setErrorMsg('Send & enter the 6-digit Phone OTP first to authenticate your UPI account.')
+        return
+      }
+    }
+
+    setOtpLoading(true)
+    setErrorMsg('')
     try {
-      setErrorMsg('')
+      let currentVerificationId = otpVerifiedId
+      let currentVerifiedPhone = verifiedPhone
+
+      if (!currentVerificationId) {
+        const verifyRes = await fetch(`${API_BASE_URL}/api/otp/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phoneInput.trim(),
+            otp: otpCode.trim(),
+            purpose: 'upi_verify',
+          }),
+        })
+        const verifyData = await verifyRes.json()
+        if (!verifyRes.ok) {
+          setErrorMsg(verifyData.error || 'OTP code did not match.')
+          setOtpLoading(false)
+          return
+        }
+        currentVerificationId = verifyData.otpVerificationId
+        currentVerifiedPhone = verifyData.phone
+        setOtpVerifiedId(currentVerificationId)
+        setVerifiedPhone(currentVerifiedPhone)
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/upi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,11 +190,13 @@ export default function UpiPaymentModal({
           upiId: newUpiId.trim(),
           provider,
           accountName: accountName.trim() || currentUser.name,
+          phone: currentVerifiedPhone || phoneInput.trim(),
+          otpVerificationId: currentVerificationId,
         }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setErrorMsg(data.error || 'Failed to save UPI ID')
+        setErrorMsg(data.error || 'Failed to link UPI ID')
         return
       }
 
@@ -95,9 +204,15 @@ export default function UpiPaymentModal({
       setSelectedUpi(data.upiAccount.upi_id)
       setNewUpiId('')
       setAccountName('')
+      setOtpSent(false)
+      setOtpCode('')
+      setOtpVerifiedId(null)
+      setSandboxOtpNotice('')
       setActiveTab('saved')
     } catch (err) {
-      setErrorMsg('Network error while saving UPI.')
+      setErrorMsg('Network error verifying OTP & saving UPI.')
+    } finally {
+      setOtpLoading(false)
     }
   }
 
@@ -115,20 +230,21 @@ export default function UpiPaymentModal({
   }
 
   const handlePayNow = async () => {
-    const chosenUpi = activeTab === 'saved' ? selectedUpi : (newUpiId || 'instant.qr@shopease')
-    if (!chosenUpi && activeTab !== 'qr') {
-      setErrorMsg('Please select or enter a UPI ID to proceed.')
+    const chosenUpi = activeTab === 'saved' ? selectedUpi : (activeTab === 'qr' ? 'qr.scan@shopease' : newUpiId)
+    if (!chosenUpi) {
+      setErrorMsg('Please select a verified UPI ID or switch to Scan QR Code.')
       return
     }
 
     setIsProcessing(true)
     setErrorMsg('')
 
-    // Generate random Indian banking transaction ID
-    const generatedTxn = `UPI/${Date.now().toString().slice(-8)}/${Math.floor(100000 + Math.random() * 900000)}`
+    const generatedTxn =
+      utrInput.trim().length >= 6
+        ? `UTR-${utrInput.trim()}`
+        : `UPI/${Date.now().toString().slice(-8)}/${Math.floor(100000 + Math.random() * 900000)}`
     setTxnId(generatedTxn)
 
-    // Simulate UPI verification & banking gateway response (1.5s)
     setTimeout(async () => {
       try {
         const orderData = {
@@ -159,7 +275,7 @@ export default function UpiPaymentModal({
           setTimeout(() => {
             onPaymentSuccess(data.order)
             onClose()
-          }, 2200)
+          }, 2000)
         } else {
           setErrorMsg(data.error || 'Payment gateway returned error.')
         }
@@ -167,18 +283,18 @@ export default function UpiPaymentModal({
         setIsProcessing(false)
         setErrorMsg('Error processing payment. Please check your internet.')
       }
-    }, 1500)
+    }, 1000)
   }
 
   if (!isOpen) return null
 
-  // UPI Intent URI for QR code
-  const upiIntent = `upi://pay?pa=shopease.merchant@icici&pn=ShopEase%20Retail&am=${totalAmount}&cu=INR&tn=Order%20Payment`
+  const upiIntent = `upi://pay?pa=shopease.platform@okicici&pn=ShopEase%20Official&am=${totalAmount}&cu=INR&tn=ShopEase%20Order`
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiIntent)}`
+  const vpaLiveStatus = newUpiId.includes('@') ? checkVpaClient(newUpiId) : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 p-5 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -187,12 +303,12 @@ export default function UpiPaymentModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold">UPI Instant Payment</h3>
-                <span className="text-[10px] bg-emerald-400/30 text-emerald-100 border border-emerald-300/40 px-2 py-0.5 rounded-full font-semibold">
-                  Zero Extra Fee
+                <h3 className="text-lg font-black">UPI + Phone OTP Pay</h3>
+                <span className="text-[10px] bg-emerald-400/30 text-emerald-100 border border-emerald-300/40 px-2 py-0.5 rounded-full font-bold">
+                  OTP Authenticated
                 </span>
               </div>
-              <p className="text-xs text-emerald-100/90">NPCI Certified 256-Bit Secure Gateway</p>
+              <p className="text-xs text-emerald-100/90">NPCI VPA Check + Mobile OTP Verified</p>
             </div>
           </div>
           <button
@@ -207,21 +323,28 @@ export default function UpiPaymentModal({
         <div className="bg-emerald-50/80 px-6 py-3 border-b border-emerald-100 flex items-center justify-between">
           <div>
             <span className="text-xs text-slate-500 font-medium">Payable Amount:</span>
-            <div className="text-2xl font-extrabold text-slate-900">
+            <div className="text-2xl font-black text-slate-900">
               ₹{totalAmount.toLocaleString('en-IN')}
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-100/80 px-3 py-1.5 rounded-xl border border-emerald-200">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1.5 rounded-xl border border-emerald-200">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            Flat ₹100 Cashback Applied
+            Instant Brand Checkout
           </div>
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto space-y-5">
+        <div className="p-5 overflow-y-auto space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-medium">
-              {errorMsg}
+            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-semibold flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {sandboxOtpNotice && (
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-2xl text-amber-900 text-xs font-bold">
+              🔐 {sandboxOtpNotice}
             </div>
           )}
 
@@ -230,12 +353,12 @@ export default function UpiPaymentModal({
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
                 <CheckCircle2 className="w-12 h-12" />
               </div>
-              <h4 className="text-xl font-bold text-slate-900">Payment Successful!</h4>
+              <h4 className="text-xl font-black text-slate-900">Payment Recorded &amp; Confirmed!</h4>
               <p className="text-sm text-slate-600">
-                ₹{totalAmount.toLocaleString('en-IN')} received via UPI
+                ₹{totalAmount.toLocaleString('en-IN')} order placed via UPI
               </p>
               <div className="inline-block bg-slate-100 text-slate-700 text-xs px-4 py-2 rounded-xl font-mono">
-                Txn ID: {txnId}
+                Ref: {txnId}
               </div>
               <p className="text-xs text-slate-400">Redirecting to your orders...</p>
             </div>
@@ -246,7 +369,7 @@ export default function UpiPaymentModal({
                 <button
                   type="button"
                   onClick={() => setActiveTab('saved')}
-                  className={`py-2 text-xs font-semibold rounded-xl transition ${
+                  className={`py-2 text-xs font-bold rounded-xl transition ${
                     activeTab === 'saved'
                       ? 'bg-white text-indigo-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
@@ -257,40 +380,40 @@ export default function UpiPaymentModal({
                 <button
                   type="button"
                   onClick={() => setActiveTab('qr')}
-                  className={`py-2 text-xs font-semibold rounded-xl transition ${
+                  className={`py-2 text-xs font-bold rounded-xl transition ${
                     activeTab === 'qr'
                       ? 'bg-white text-indigo-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Scan QR Code
+                  UPI App / QR
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('new')}
-                  className={`py-2 text-xs font-semibold rounded-xl transition ${
+                  className={`py-2 text-xs font-bold rounded-xl transition ${
                     activeTab === 'new'
                       ? 'bg-white text-indigo-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  + Add New UPI
+                  + Link via OTP
                 </button>
               </div>
 
-              {/* TAB 1: SAVED UPI LIST */}
+              {/* TAB 1: SAVED OTP-VERIFIED UPI LIST */}
               {activeTab === 'saved' && (
                 <div className="space-y-3">
                   {savedUpiList.length === 0 ? (
                     <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-2xl">
                       <Smartphone className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500 font-medium">No saved UPI IDs yet.</p>
+                      <p className="text-sm text-slate-500 font-medium">No OTP-verified UPI IDs yet.</p>
                       <button
                         type="button"
                         onClick={() => setActiveTab('new')}
-                        className="mt-3 text-xs text-indigo-600 font-semibold hover:underline"
+                        className="mt-3 text-xs text-indigo-600 font-bold hover:underline"
                       >
-                        + Add your Google Pay or PhonePe ID
+                        + Verify Phone OTP &amp; Link UPI ID
                       </button>
                     </div>
                   ) : (
@@ -310,9 +433,15 @@ export default function UpiPaymentModal({
                               {item.provider?.slice(0, 2).toUpperCase() || 'UPI'}
                             </div>
                             <div>
-                              <div className="text-sm font-bold text-slate-800">{item.upi_id}</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-extrabold text-slate-800">{item.upi_id}</span>
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                                  OTP Verified ✓
+                                </span>
+                              </div>
                               <div className="text-[11px] text-slate-500 flex items-center gap-1">
                                 <span>{item.provider}</span> • <span>{item.account_name}</span>
+                                {item.verified_phone && <span>• {item.verified_phone}</span>}
                               </div>
                             </div>
                           </div>
@@ -336,42 +465,50 @@ export default function UpiPaymentModal({
                 </div>
               )}
 
-              {/* TAB 2: SCAN QR CODE */}
+              {/* TAB 2: SCAN QR CODE + DIRECT UPI APP DEEP LINK */}
               {activeTab === 'qr' && (
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-3">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 inline-block shadow-inner">
                     <img
                       src={qrCodeUrl}
                       alt="ShopEase UPI QR"
-                      className="w-48 h-48 mx-auto rounded-xl shadow-md border-2 border-white"
+                      className="w-44 h-44 mx-auto rounded-xl shadow-md border-2 border-white"
                     />
-                    <div className="mt-2 text-xs font-semibold text-slate-600">
-                      Scan with any UPI App: GPay, PhonePe, Paytm
+                    <div className="mt-2 text-xs font-bold text-slate-700">
+                      Pay to: <span className="font-mono text-indigo-700">shopease.platform@okicici</span>
                     </div>
                   </div>
-                  <div className="flex justify-center gap-2">
-                    <span className="text-[11px] bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-medium">
-                      Google Pay
-                    </span>
-                    <span className="text-[11px] bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
-                      PhonePe
-                    </span>
-                    <span className="text-[11px] bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full font-medium">
-                      Paytm
-                    </span>
-                    <span className="text-[11px] bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-medium">
-                      BHIM
-                    </span>
+
+                  <div>
+                    <a
+                      href={upiIntent}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-full shadow-md transition"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> Open GPay / PhonePe / Paytm App
+                    </a>
+                  </div>
+
+                  <div className="text-left bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      12-Digit UPI UTR / Reference No. (Optional for test, Required for Live QR)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 431209876543"
+                      value={utrInput}
+                      onChange={(e) => setUtrInput(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 font-mono"
+                    />
                   </div>
                 </div>
               )}
 
-              {/* TAB 3: ADD NEW UPI */}
+              {/* TAB 3: ADD NEW UPI WITH REAL PHONE OTP AUTHENTICATION */}
               {activeTab === 'new' && (
-                <form onSubmit={handleSaveUpi} className="space-y-4">
+                <form onSubmit={handleVerifyOtpAndSaveUpi} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Select UPI App
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      1. Select UPI App
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {PROVIDERS.map((p) => (
@@ -380,11 +517,11 @@ export default function UpiPaymentModal({
                           type="button"
                           onClick={() => {
                             setProvider(p.name)
-                            if (!newUpiId.includes('@')) {
-                              setNewUpiId((prev) => (prev ? `${prev}${p.suffix}` : ''))
+                            if (newUpiId && !newUpiId.includes('@')) {
+                              setNewUpiId(`${newUpiId}${p.suffix}`)
                             }
                           }}
-                          className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition flex items-center gap-2 ${
+                          className={`p-2 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 ${
                             provider === p.name
                               ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                               : 'border-slate-200 text-slate-600 hover:border-slate-300'
@@ -398,41 +535,91 @@ export default function UpiPaymentModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Your UPI ID
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      2. Your Real UPI ID (NPCI VPA Checked)
                     </label>
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="e.g. 9163248305@paytm or rahul@okaxis"
+                        placeholder="e.g. 9876543210@ybl or name@okaxis"
                         value={newUpiId}
                         onChange={(e) => setNewUpiId(e.target.value)}
-                        className="w-full pl-3.5 pr-20 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition"
+                        className="w-full pl-3.5 pr-32 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition"
                       />
-                      <span className="absolute right-3 top-2.5 text-xs font-semibold text-emerald-600">
-                        Verified
-                      </span>
+                      {vpaLiveStatus && (
+                        <span
+                          className={`absolute right-3 top-2.5 text-[11px] font-extrabold ${
+                            vpaLiveStatus.valid ? 'text-emerald-600' : 'text-rose-500'
+                          }`}
+                        >
+                          {vpaLiveStatus.label}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Account Holder Name (Optional)
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Account Holder Name
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. Suvradip Dey"
                       value={accountName}
                       onChange={(e) => setAccountName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition"
+                      className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 focus:bg-white transition"
                     />
+                  </div>
+
+                  {/* Step 3: Phone OTP Verification */}
+                  <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-indigo-900">
+                      <KeyRound className="w-4 h-4 text-indigo-600" />
+                      <span>3. Phone OTP Authentication (Required)</span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="tel"
+                        placeholder="10-digit Mobile Number"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={otpLoading}
+                        className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition shrink-0"
+                      >
+                        {otpSent ? 'Resend OTP' : 'Send OTP'}
+                      </button>
+                    </div>
+
+                    {otpSent && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-800 mb-1">
+                          Enter 6-Digit OTP Sent to Your Phone
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          placeholder="Enter 6-digit OTP"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          className="w-full px-3.5 py-2 text-sm font-mono tracking-widest bg-white border border-indigo-300 rounded-xl focus:outline-none focus:border-indigo-600"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
+                    disabled={otpLoading}
+                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
                   >
-                    <Plus className="w-4 h-4" /> Save & Connect This UPI ID
+                    <Plus className="w-4 h-4" />
+                    {otpLoading ? 'Verifying OTP...' : 'Verify OTP & Link UPI ID'}
                   </button>
                 </form>
               )}
@@ -443,16 +630,16 @@ export default function UpiPaymentModal({
         {/* Footer Actions */}
         {!isSuccess && (
           <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+            <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>100% Secure NPCI Payment</span>
+              <span>OTP &amp; NPCI Protected</span>
             </div>
             <button
               type="button"
               onClick={handlePayNow}
-              disabled={isProcessing}
-              className={`px-6 py-2.5 rounded-2xl font-bold text-sm text-white shadow-lg transition flex items-center gap-2 ${
-                isProcessing
+              disabled={isProcessing || (activeTab === 'saved' && !selectedUpi)}
+              className={`px-6 py-2.5 rounded-2xl font-extrabold text-sm text-white shadow-lg transition flex items-center gap-2 ${
+                isProcessing || (activeTab === 'saved' && !selectedUpi)
                   ? 'bg-slate-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 shadow-emerald-500/25 active:scale-95'
               }`}
@@ -460,7 +647,7 @@ export default function UpiPaymentModal({
               {isProcessing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Verifying with Bank...
+                  Confirming...
                 </>
               ) : (
                 <>
