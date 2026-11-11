@@ -28,7 +28,7 @@ function Login() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
+    // NOTE: do NOT call setErrors here — causes re-render → focus loss
   }
 
   const handleSubmit = async (e) => {
