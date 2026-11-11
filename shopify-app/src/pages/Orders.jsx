@@ -1,13 +1,29 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Package, ArrowLeft, Truck, Calendar, ShoppingBag, Clock, CheckCircle2, User, Zap, ShieldCheck } from 'lucide-react'
+import {
+  Package,
+  ArrowLeft,
+  Truck,
+  Calendar,
+  ShoppingBag,
+  Clock,
+  CheckCircle2,
+  User,
+  Zap,
+  ShieldCheck,
+  Building2,
+  FileText,
+  ChevronRight,
+} from 'lucide-react'
 import { API_BASE_URL } from '../config'
+import InvoiceModal from '../components/InvoiceModal'
 
 function Orders() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('currentUser')
@@ -50,7 +66,7 @@ function Orders() {
             <div>
               <h1 className="text-2xl font-black text-slate-900">Your Orders & Deliveries</h1>
               <p className="text-xs text-slate-500">
-                Connected to Supabase PostgreSQL table <code className="bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded font-mono">orders</code>
+                Connected to Direct Brand Stores via Supabase PostgreSQL <code className="bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded font-mono">orders</code>
               </p>
             </div>
           </div>
@@ -70,7 +86,7 @@ function Orders() {
               <span>Orders for: <strong className="text-slate-900">{currentUser.name}</strong> ({currentUser.email})</span>
             </div>
             <span className="text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Supabase Cloud Sync
+              <ShieldCheck className="w-3.5 h-3.5" /> 100% Brand Sourced
             </span>
           </div>
         )}
@@ -85,7 +101,7 @@ function Orders() {
           <div className="bg-white p-12 rounded-3xl text-center text-slate-500 shadow-sm border border-slate-200">
             <Package className="w-14 h-14 text-slate-300 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-slate-800">No orders placed yet!</h3>
-            <p className="text-xs text-slate-400 mt-1">Explore our 2,400+ authentic products and try UPI Instant checkout.</p>
+            <p className="text-xs text-slate-400 mt-1">Explore our 2,400+ authentic brand-direct products with UPI Instant checkout.</p>
             <Link
               to="/"
               className="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition"
@@ -99,6 +115,8 @@ function Orders() {
               const items = typeof order.items_summary === 'string'
                 ? JSON.parse(order.items_summary)
                 : order.items_summary
+
+              const brandStore = order.brand_store || (items[0]?.name ? `${items[0].name.split(' ')[0]} Official Flagship Store` : 'Official Brand Store')
 
               return (
                 <div
@@ -119,10 +137,52 @@ function Orders() {
                       <p className="text-slate-400 uppercase font-bold text-[10px]">Total Paid</p>
                       <p className="font-black text-slate-900 text-sm mt-0.5">₹{Number(order.total_amount).toLocaleString('en-IN')}</p>
                     </div>
-                    <div>
-                      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {order.status}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedInvoiceOrder(order)}
+                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs flex items-center gap-1 border border-indigo-200 transition"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Tax Invoice & Warranty
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Brand Store Dispatch Hub Banner */}
+                  <div className="px-4 py-2.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-indigo-400" />
+                      <span>Sourced Directly from: <strong className="text-amber-300">{brandStore}</strong></span>
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 text-[9px] px-1.5 py-0.2 rounded font-bold">
+                        ✓ Brand Direct
                       </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Hub: {order.brand_hub || 'National Logistics Center'}
+                    </div>
+                  </div>
+
+                  {/* 4-Step Tracking Timeline Progress */}
+                  <div className="p-4 bg-slate-50/70 border-b border-slate-200/80">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      Live Delivery Progress:
+                    </p>
+                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                      <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex flex-col items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span className="text-[10px]">1. Order Placed</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex flex-col items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span className="text-[10px]">2. Packed at Brand Hub</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold flex flex-col items-center gap-1">
+                        <Truck className="w-4 h-4 text-indigo-600" />
+                        <span className="text-[10px]">3. Air Express In Transit</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 font-semibold flex flex-col items-center gap-1">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <span className="text-[10px]">4. Doorstep ETA</span>
+                      </div>
                     </div>
                   </div>
 
@@ -164,7 +224,7 @@ function Orders() {
                             )}
                             <div>
                               <p className="font-bold text-slate-900">{it.name}</p>
-                              <p className="text-slate-400 text-[11px]">Qty: {it.quantity} × ₹{Number(it.price).toLocaleString('en-IN')}</p>
+                              <p className="text-slate-400 text-[11px]">Qty: {it.quantity} × ₹{Number(it.price).toLocaleString('en-IN')} • Fulfilled by {brandStore}</p>
                             </div>
                           </div>
                           <p className="font-extrabold text-slate-900">₹{(it.price * it.quantity).toLocaleString('en-IN')}</p>
@@ -177,6 +237,13 @@ function Orders() {
           </div>
         )}
       </div>
+
+      {/* Tax Invoice & Warranty Card Modal */}
+      <InvoiceModal
+        order={selectedInvoiceOrder}
+        isOpen={Boolean(selectedInvoiceOrder)}
+        onClose={() => setSelectedInvoiceOrder(null)}
+      />
     </div>
   )
 }

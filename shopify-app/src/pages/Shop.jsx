@@ -703,6 +703,16 @@ function Shop() {
                           <span className="font-extrabold">₹{Number(item.group_price).toLocaleString('en-IN')}</span>
                         </div>
                       )}
+
+                      {/* Brand Direct Seller Tag */}
+                      <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500">
+                        <span className="text-indigo-600 font-bold flex items-center gap-0.5">
+                          ✓ Brand Direct:
+                        </span>
+                        <span className="truncate font-medium text-slate-700">
+                          {item.seller_name ? item.seller_name.replace('Official', '').replace('Flagship', '').trim() : item.brand}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Action Buttons */}

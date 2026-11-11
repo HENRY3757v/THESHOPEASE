@@ -14,6 +14,8 @@ import {
   Layers,
   ChevronRight,
   ShoppingBag,
+  Building2,
+  FileText,
 } from 'lucide-react'
 
 export default function ProductDetailModal({
@@ -119,8 +121,8 @@ export default function ProductDetailModal({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Details, Specs, Delivery & Actions */}
-        <div className="w-full md:w-1/2 p-6 overflow-y-auto flex flex-col justify-between space-y-5">
+        {/* RIGHT COLUMN: Details, Brand Store, Specs, Delivery & Actions */}
+        <div className="w-full md:w-1/2 p-6 overflow-y-auto flex flex-col justify-between space-y-4">
           {/* Title & Ratings */}
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-1">
@@ -136,16 +138,16 @@ export default function ProductDetailModal({
                 <Star className="w-3 h-3 fill-current" />
               </div>
               <span className="text-xs text-slate-500">
-                ({(product.reviews_count || 1200).toLocaleString('en-IN')} verified customer reviews)
+                ({(product.reviews_count || 1200).toLocaleString('en-IN')} verified reviews)
               </span>
               <span className="text-xs font-semibold text-emerald-600 ml-auto flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> Assured
+                <Check className="w-3.5 h-3.5" /> 100% Genuine
               </span>
             </div>
           </div>
 
           {/* Pricing Box */}
-          <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 p-4 rounded-2xl border border-slate-200/80">
+          <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 p-3.5 rounded-2xl border border-slate-200/80">
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-black text-slate-900">
                 ₹{Number(product.price).toLocaleString('en-IN')}
@@ -164,14 +166,14 @@ export default function ProductDetailModal({
 
             {/* Dosti Deal callout */}
             {product.group_price && (
-              <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+              <div className="mt-2.5 pt-2.5 border-t border-slate-200/60 flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
                     <Users className="w-3.5 h-3.5" /> Dosti Deal Price:
                   </div>
                   <div className="text-base font-black text-amber-900">
                     ₹{Number(product.group_price).toLocaleString('en-IN')}
-                    <span className="text-xs text-amber-700 font-medium ml-1.5">(Flat 12% Extra Off)</span>
+                    <span className="text-xs text-amber-700 font-medium ml-1.5">(12% Group Discount)</span>
                   </div>
                 </div>
                 <button
@@ -188,34 +190,75 @@ export default function ProductDetailModal({
             )}
           </div>
 
+          {/* OFFICIAL BRAND STOREFRONT / DIRECT SELLER WIDGET */}
+          <div className="bg-slate-900 text-white p-3.5 rounded-2xl shadow-md border border-slate-800">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/40 border border-indigo-400/30 flex items-center justify-center font-black text-xs text-indigo-300 shrink-0">
+                  <Building2 className="w-4 h-4 text-indigo-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-white">
+                      {product.seller_name || `${product.brand} Official Flagship Store`}
+                    </span>
+                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 text-[9px] px-1.5 py-0.2 rounded font-bold">
+                      ✓ Direct Brand Store
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate max-w-[220px]">
+                    Hub: {product.seller_hub || 'Central Logistics Terminal'}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="flex items-center gap-0.5 text-amber-400 text-xs font-bold justify-end">
+                  <span>{product.seller_rating || 4.9}</span>
+                  <Star className="w-3 h-3 fill-current" />
+                </div>
+                <span className="text-[9px] text-slate-400">Store Score</span>
+              </div>
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-300">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                {product.warranty_policy || 'Official Pan-India Brand Warranty & Service'}
+              </span>
+              <span className="font-mono text-slate-400 text-[9px]">
+                GST: {product.seller_gstin || '07AAACX9999X1Z1'}
+              </span>
+            </div>
+          </div>
+
           {/* Technical Specs Breakdown */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-indigo-600" /> Technical Specifications
             </h4>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Key Highlight</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Key Feature</span>
                 <span className="font-semibold text-slate-800 line-clamp-2">
-                  {parsedSpecs.key_feature || 'Premium High-Performance Hardware'}
+                  {parsedSpecs.key_feature || 'Flagship Architecture & Engineering'}
                 </span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-400 block text-[10px] uppercase font-semibold">Battery / Power</span>
                 <span className="font-semibold text-slate-800 line-clamp-2">
-                  {parsedSpecs.battery || parsedSpecs.power || 'All-Day Fast Charging'}
+                  {parsedSpecs.battery || parsedSpecs.power || 'High-Efficiency All-Day Life'}
                 </span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-400 block text-[10px] uppercase font-semibold">Warranty</span>
                 <span className="font-semibold text-slate-800 line-clamp-2">
-                  {parsedSpecs.warranty || '1 Year Official Brand Warranty'}
+                  {parsedSpecs.warranty || '1 Year Direct Brand Warranty'}
                 </span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-400 block text-[10px] uppercase font-semibold">Ideal For</span>
                 <span className="font-semibold text-slate-800 line-clamp-2">
-                  {parsedSpecs.ideal_for || 'Everyday Reliability & Performance'}
+                  {parsedSpecs.ideal_for || 'Everyday Durability & Top Performance'}
                 </span>
               </div>
             </div>
@@ -241,28 +284,18 @@ export default function ProductDetailModal({
               </button>
               {isPincodeChecked && (
                 <span className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1 ml-auto">
-                  <Truck className="w-3.5 h-3.5 text-emerald-600" /> Delivery in 24-48 Hours!
+                  <Truck className="w-3.5 h-3.5 text-emerald-600" /> Free Dispatch from Brand Hub!
                 </span>
               )}
             </form>
-            <div className="mt-2 text-[10px] text-slate-500 flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <RotateCcw className="w-3 h-3 text-slate-400" /> 7-Day Replacement
-              </span>
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" /> GST Invoice Available
-              </span>
-            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2 pt-1">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  onAddToCart(product)
-                }}
+                onClick={() => onAddToCart(product)}
                 className="py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md transition active:scale-95 flex items-center justify-center gap-2"
               >
                 <ShoppingBag className="w-4 h-4" /> Add to Cart

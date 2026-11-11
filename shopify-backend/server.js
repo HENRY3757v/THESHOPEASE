@@ -36,7 +36,7 @@ pool.connect()
 
 // Health Check
 app.get('/', (req, res) => {
-  res.send({ status: 'Online', message: 'ShopEase API is running with Supabase PostgreSQL!' })
+  res.send({ status: 'Online', message: 'ShopEase Direct Brand-Fulfillment API is running with Supabase PostgreSQL!' })
 })
 
 // 1. REGISTER USER
@@ -132,7 +132,7 @@ app.get('/api/users', async (req, res) => {
   }
 })
 
-// 4. CREATE NEW ORDER (With UPI / Payment info)
+// 4. CREATE NEW ORDER (With Brand Store Fulfillment & UPI info)
 app.post('/api/orders', async (req, res) => {
   const {
     userId,
@@ -155,13 +155,17 @@ app.post('/api/orders', async (req, res) => {
   try {
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
     const txn = transactionId || `UPI-${Date.now().toString().slice(-8)}-${Math.floor(1000 + Math.random() * 9000)}`
+    const invoiceNumber = `TAX-${Date.now().toString().slice(-7)}`
     const deliveryDateObj = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000)
     const deliveryDate = deliveryDateObj.toISOString().split('T')[0]
 
+    const brandStore = items[0]?.seller_name || `${items[0]?.name?.split(' ')[0] || 'Brand'} Official Flagship Store`
+    const brandHub = items[0]?.seller_hub || 'National Brand Logistics Hub'
+
     const result = await pool.query(
       `INSERT INTO orders 
-      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, upi_id, transaction_id, payment_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, upi_id, transaction_id, payment_status, brand_store, brand_hub, invoice_number, tracking_stage)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
       [
         orderNumber,
         userId,
@@ -172,20 +176,24 @@ app.post('/api/orders', async (req, res) => {
         JSON.stringify(items),
         totalAmount,
         deliveryDate,
-        'Placed',
+        'Confirmed with Brand Store',
         paymentMethod,
         upiId,
         txn,
         'Completed',
+        brandStore,
+        brandHub,
+        invoiceNumber,
+        2, // Packed at Brand Hub
       ]
     )
 
     const orderId = result.rows[0].id
-    console.log(`[ORDER CREATED] ${orderNumber} for ${userName} (${userEmail}) via ${paymentMethod} (${upiId}) - Total: ₹${totalAmount}`)
+    console.log(`[ORDER CREATED] ${orderNumber} direct from ${brandStore} for ${userName} (${userEmail}) via ${paymentMethod} - Total: ₹${totalAmount}`)
 
     return res.status(201).json({
       success: true,
-      message: 'Order placed & paid successfully via UPI!',
+      message: 'Order confirmed & dispatched directly by Official Brand Store!',
       order: {
         id: orderId,
         orderNumber,
@@ -193,11 +201,15 @@ app.post('/api/orders', async (req, res) => {
         userEmail,
         totalAmount,
         deliveryDate,
-        status: 'Placed',
+        status: 'Confirmed with Brand Store',
         paymentMethod,
         upiId,
         transactionId: txn,
         paymentStatus: 'Completed',
+        brandStore,
+        brandHub,
+        invoiceNumber,
+        trackingStage: 2,
         items,
       },
     })
@@ -228,7 +240,7 @@ app.get('/api/orders', async (req, res) => {
   }
 })
 
-// 6. GET PRODUCTS
+// 6. GET PRODUCTS (With Brand Seller info)
 app.get('/api/products', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1)
@@ -252,7 +264,7 @@ app.get('/api/products', async (req, res) => {
 
     if (search && search.trim()) {
       const q = `%${search.trim()}%`
-      conditions.push(`(name ILIKE $${paramIndex} OR brand ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`)
+      conditions.push(`(name ILIKE $${paramIndex} OR brand ILIKE $${paramIndex} OR category ILIKE $${paramIndex} OR seller_name ILIKE $${paramIndex})`)
       params.push(q)
       paramIndex++
     }
