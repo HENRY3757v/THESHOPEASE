@@ -44,6 +44,8 @@ import {
   Gem,
   ShoppingBasket,
   Car,
+  ExternalLink,
+  Globe,
 } from 'lucide-react'
 
 import DeliveryWelcomeAnimation from '../components/DeliveryWelcomeAnimation'
@@ -369,6 +371,12 @@ function Shop() {
           price: Number(product.price),
           image: product.image,
           quantity: 1,
+          seller_id: product.seller_id || null,
+          seller_name: product.seller_name || null,
+          seller_hub: product.seller_hub || null,
+          source_site: product.source_site || 'ShopEase Direct',
+          external_url: product.external_url || null,
+          external_cart_url: product.external_cart_url || null,
         },
       ]
     })
@@ -393,6 +401,12 @@ function Shop() {
           price: dostiPrice,
           image: product.image,
           quantity: 1,
+          seller_id: product.seller_id || null,
+          seller_name: product.seller_name || null,
+          seller_hub: product.seller_hub || null,
+          source_site: product.source_site || 'ShopEase Direct',
+          external_url: product.external_url || null,
+          external_cart_url: product.external_cart_url || null,
         },
       ]
     })
@@ -454,6 +468,12 @@ function Shop() {
         price: Number(product.price),
         image: product.image,
         quantity: 1,
+        seller_id: product.seller_id || null,
+        seller_name: product.seller_name || null,
+        seller_hub: product.seller_hub || null,
+        source_site: product.source_site || 'ShopEase Direct',
+        external_url: product.external_url || null,
+        external_cart_url: product.external_cart_url || null,
       },
     ]
     setUpiPayItems(singleItem)
@@ -1010,16 +1030,35 @@ function Shop() {
                         </div>
                       )}
 
-                      {/* Brand Direct Seller Tag */}
-                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                        <span className="text-blue-600 font-extrabold flex items-center gap-0.5">
-                          ✓ Brand Direct:
+                      {/* Brand Direct & Source Website Tag */}
+                      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
+                        <span className="text-blue-600 font-extrabold flex items-center gap-0.5 truncate">
+                          ✓ {item.source_site || 'Brand Direct'}
                         </span>
-                        <span className="truncate font-semibold text-slate-700">
-                          {item.seller_name
-                            ? item.seller_name.replace('Official', '').replace('Flagship', '').trim()
-                            : item.brand}
-                        </span>
+                        {item.external_url && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              fetch(`${API_BASE_URL}/api/bridge/redirect`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  userId: currentUser?.id || null,
+                                  productId: item.id,
+                                  sourceSite: item.source_site || 'Partner Store',
+                                  targetUrl: item.external_url,
+                                  actionType: 'view_store',
+                                }),
+                              }).catch(() => {})
+                              window.open(item.external_url, '_blank', 'noopener,noreferrer')
+                            }}
+                            className="inline-flex items-center gap-0.5 text-indigo-600 hover:text-indigo-800 font-bold shrink-0 cursor-pointer"
+                            title="Open Original Website"
+                          >
+                            <Globe className="w-2.5 h-2.5" /> Store <ExternalLink className="w-2.5 h-2.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1264,7 +1303,7 @@ function Shop() {
                     <ShoppingCart className="w-10 h-10 text-indigo-400" />
                   </div>
                   <p className="text-slate-700 font-bold text-base">Your cart is empty</p>
-                  <p className="text-xs text-slate-400 mt-1">Explore 2,400+ brand direct products</p>
+                  <p className="text-xs text-slate-400 mt-1">Explore 425+ real verified products</p>
                   <button
                     onClick={() => setIsCartOpen(false)}
                     className="mt-5 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full text-xs font-extrabold shadow-md"
@@ -1282,9 +1321,21 @@ function Shop() {
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-extrabold text-slate-900 line-clamp-2">{item.name}</h4>
-                      <p className="text-sm font-black text-indigo-700 mt-1">
-                        ₹{(item.price * item.quantity).toLocaleString('en-IN')}
-                      </p>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <p className="text-sm font-black text-indigo-700">
+                          ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                        </p>
+                        {item.external_url && (
+                          <a
+                            href={item.external_cart_url || item.external_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5"
+                          >
+                            {item.source_site || 'Original Site'} <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
@@ -1339,6 +1390,7 @@ function Shop() {
         onOpenCompare={toggleCompare}
         onOpenDosti={(p) => setDostiProduct(p)}
         onDirectUpiBuy={handleDirectUpiBuy}
+        currentUser={currentUser}
       />
 
       <UpiPaymentModal

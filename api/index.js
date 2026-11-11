@@ -300,7 +300,7 @@ router.get('/users', async (req, res) => {
   }
 })
 
-// 4. CREATE NEW ORDER (With Brand Store Fulfillment & UPI info)
+// 4. CREATE NEW ORDER (With Brand Store / Partner Webhook Bridge Fulfillment & UPI info)
 router.post('/orders', async (req, res) => {
   const {
     userId,
@@ -327,13 +327,58 @@ router.post('/orders', async (req, res) => {
     const deliveryDateObj = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000)
     const deliveryDate = deliveryDateObj.toISOString().split('T')[0]
 
-    const brandStore = items[0]?.seller_name || `${items[0]?.name?.split(' ')[0] || 'Brand'} Official Flagship Store`
-    const brandHub = items[0]?.seller_hub || 'National Brand Logistics Hub'
+    const firstItem = items[0] || {}
+    const brandStore = firstItem.seller_name || `${firstItem.name?.split(' ')[0] || 'Brand'} Official Flagship Store`
+    const brandHub = firstItem.seller_hub || 'National Brand Logistics Hub'
+    const externalSite = firstItem.source_site || 'ShopEase Direct'
+
+    // Check if seller has a connected Partner Store Webhook URL to forward order internally
+    let fulfillmentMode = 'shopease_direct'
+    let externalOrderId = null
+    let externalReceiptUrl = firstItem.external_url || null
+    let externalReceiptJson = null
+
+    if (firstItem.seller_id) {
+      try {
+        const sRes = await pool.query('SELECT store_webhook_url, store_name FROM sellers WHERE id = $1', [firstItem.seller_id])
+        const webhookUrl = sRes.rows[0]?.store_webhook_url
+        if (webhookUrl && /^https?:\/\//i.test(webhookUrl)) {
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), 5000)
+          try {
+            const hookResp = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                event: 'shopease.order.created',
+                orderNumber,
+                customer: { name: userName, email: userEmail, phone: userPhone, address: shippingAddress },
+                items,
+                totalAmount,
+                transactionId: txn,
+              }),
+            })
+            if (hookResp.ok) {
+              const hookData = await hookResp.json().catch(() => ({}))
+              fulfillmentMode = 'partner_webhook'
+              externalOrderId = hookData.externalOrderId || hookData.order_id || `EXT-${orderNumber}`
+              externalReceiptUrl = hookData.receiptUrl || externalReceiptUrl
+              externalReceiptJson = hookData
+            }
+          } finally {
+            clearTimeout(timer)
+          }
+        }
+      } catch (hookErr) {
+        console.warn('Partner webhook dispatch skipped:', hookErr.message)
+      }
+    }
 
     const result = await pool.query(
       `INSERT INTO orders 
-      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, upi_id, transaction_id, payment_status, brand_store, brand_hub, invoice_number, tracking_stage)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
+      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, upi_id, transaction_id, payment_status, brand_store, brand_hub, invoice_number, tracking_stage, external_site, external_order_id, external_receipt_url, external_receipt_json, fulfillment_mode)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id`,
       [
         orderNumber,
         userId,
@@ -344,7 +389,7 @@ router.post('/orders', async (req, res) => {
         JSON.stringify(items),
         totalAmount,
         deliveryDate,
-        'Confirmed with Brand Store',
+        fulfillmentMode === 'partner_webhook' ? 'Synced with Partner Store' : 'Confirmed with Brand Store',
         paymentMethod,
         upiId,
         txn,
@@ -353,6 +398,11 @@ router.post('/orders', async (req, res) => {
         brandHub,
         invoiceNumber,
         2,
+        externalSite,
+        externalOrderId,
+        externalReceiptUrl,
+        externalReceiptJson ? JSON.stringify(externalReceiptJson) : null,
+        fulfillmentMode,
       ]
     )
 
@@ -360,7 +410,10 @@ router.post('/orders', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Order confirmed & dispatched directly by Official Brand Store!',
+      message:
+        fulfillmentMode === 'partner_webhook'
+          ? `Order forwarded to partner store (${externalSite}) & receipt stored!`
+          : 'Order confirmed & receipt stored in ShopEase!',
       order: {
         id: orderId,
         orderNumber,
@@ -368,7 +421,7 @@ router.post('/orders', async (req, res) => {
         userEmail,
         totalAmount,
         deliveryDate,
-        status: 'Confirmed with Brand Store',
+        status: fulfillmentMode === 'partner_webhook' ? 'Synced with Partner Store' : 'Confirmed with Brand Store',
         paymentMethod,
         upiId,
         transactionId: txn,
@@ -377,6 +430,10 @@ router.post('/orders', async (req, res) => {
         brandHub,
         invoiceNumber,
         trackingStage: 2,
+        fulfillmentMode,
+        externalSite,
+        externalOrderId,
+        externalReceiptUrl,
         items,
       },
     })
@@ -877,6 +934,201 @@ router.get('/seller/platform-revenue', async (req, res) => {
   } catch (err) {
     console.error('Platform revenue error:', err)
     res.status(500).json({ error: 'Failed to load platform revenue.' })
+  }
+})
+
+// ============================================================
+// STORE BRIDGE: REDIRECT LOGGING, EXTERNAL RECEIPT SYNC & PARTNER CATALOG IMPORT
+// ============================================================
+
+// 19. TRACK EXTERNAL STORE / CART REDIRECT
+router.post('/bridge/redirect', async (req, res) => {
+  const { userId = null, productId = null, sourceSite = 'Partner Store', targetUrl, actionType = 'view_store' } = req.body
+  if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
+    return res.status(400).json({ error: 'Valid target store URL is required.' })
+  }
+  try {
+    await pool.query(
+      `INSERT INTO external_redirects (user_id, product_id, source_site, target_url, action_type)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, productId, sourceSite, targetUrl, actionType]
+    )
+    return res.json({ success: true, redirectUrl: targetUrl, sourceSite, actionType })
+  } catch (err) {
+    console.error('Bridge redirect error:', err)
+    return res.status(500).json({ error: 'Failed to log store redirect.' })
+  }
+})
+
+// 20. SYNC / SAVE EXTERNAL WEBSITE ORDER RECEIPT INTO SHOPEASE DB
+router.post('/orders/sync-external', async (req, res) => {
+  const {
+    userId,
+    userName = 'ShopEase Customer',
+    userEmail = '',
+    userPhone = '',
+    shippingAddress = 'Delivered via Partner Store',
+    externalSite,
+    externalOrderId,
+    productName,
+    totalAmount,
+    externalReceiptUrl = '',
+    paymentMethod = 'Partner Store Checkout',
+  } = req.body
+
+  if (!userId || !externalSite || !externalOrderId || !productName || !totalAmount) {
+    return res.status(400).json({
+      error: 'Store name, External Order ID, Product name, and Total amount are required.',
+    })
+  }
+
+  try {
+    const orderNumber = `EXT-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
+    const invoiceNumber = `REC-${Date.now().toString().slice(-7)}`
+    const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const items = [
+      {
+        name: productName.trim(),
+        price: Number(totalAmount),
+        quantity: 1,
+        seller_name: externalSite.trim(),
+      },
+    ]
+
+    const receiptPayload = {
+      externalSite: externalSite.trim(),
+      externalOrderId: externalOrderId.trim(),
+      externalReceiptUrl: externalReceiptUrl.trim() || null,
+      syncedAt: new Date().toISOString(),
+    }
+
+    const result = await pool.query(
+      `INSERT INTO orders
+      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, transaction_id, payment_status, brand_store, brand_hub, invoice_number, tracking_stage, external_site, external_order_id, external_receipt_url, external_receipt_json, fulfillment_mode)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
+      [
+        orderNumber,
+        userId,
+        userName,
+        userEmail,
+        userPhone,
+        shippingAddress,
+        JSON.stringify(items),
+        Number(totalAmount),
+        deliveryDate,
+        `Synced Receipt (${externalSite.trim()})`,
+        paymentMethod,
+        externalOrderId.trim(),
+        'Completed',
+        externalSite.trim(),
+        `${externalSite.trim()} Partner Fulfillment`,
+        invoiceNumber,
+        2,
+        externalSite.trim(),
+        externalOrderId.trim(),
+        externalReceiptUrl.trim() || null,
+        JSON.stringify(receiptPayload),
+        'external_redirect_synced',
+      ]
+    )
+
+    return res.status(201).json({
+      success: true,
+      message: `External order receipt (${externalOrderId}) from ${externalSite} archived in ShopEase!`,
+      order: result.rows[0],
+    })
+  } catch (err) {
+    console.error('Sync external receipt error:', err)
+    return res.status(500).json({ error: 'Failed to save external receipt.' })
+  }
+})
+
+// 21. SYNC COOPERATING SHOPIFY PARTNER STORE FEED (/products.json -> DIRECT PRODUCT & CART URLS)
+router.post('/catalog/sync-shopify', async (req, res) => {
+  const { storeDomain, category = 'Fashion', limit = 25 } = req.body
+  if (!storeDomain) {
+    return res.status(400).json({ error: 'storeDomain (e.g., colourpop.com) is required.' })
+  }
+
+  let host
+  try {
+    const clean = storeDomain.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '')
+    host = clean
+  } catch {
+    return res.status(400).json({ error: 'Invalid store domain.' })
+  }
+
+  try {
+    const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 25))
+    const resp = await fetch(`https://${host}/products.json?limit=${safeLimit}`, {
+      headers: { 'User-Agent': 'ShopEasePartnerSync/1.0' },
+    })
+    if (!resp.ok) {
+      return res.status(400).json({
+        error: `Store "${host}" did not expose a public Shopify /products.json feed (HTTP ${resp.status}).`,
+      })
+    }
+    const data = await resp.json()
+    const items = Array.isArray(data.products) ? data.products : []
+    let insertedCount = 0
+
+    for (const p of items) {
+      const img = p.images?.[0]?.src
+      const variant = p.variants?.[0]
+      if (!img || !variant || !p.title) continue
+
+      const usdOrNative = Number(variant.price) || 19.99
+      const inrPrice = usdOrNative < 250 ? Math.round(usdOrNative * 84) : Math.round(usdOrNative)
+      const mrp = Math.round(inrPrice * 1.18)
+      const productUrl = `https://${host}/products/${p.handle}`
+      const cartUrl = `https://${host}/cart/${variant.id}:1`
+      const specs = {
+        key_feature: (p.body_html || `${p.vendor || host} Official Product`).replace(/<[^>]+>/g, '').trim().slice(0, 140),
+        warranty: 'Official Brand Guarantee',
+        ideal_for: p.product_type || category,
+        gallery: (p.images || []).slice(0, 4).map((i) => i.src),
+      }
+
+      const existing = await pool.query('SELECT id FROM products WHERE external_id = $1 LIMIT 1', [`SH-${host}-${p.id}`])
+      if (existing.rows.length > 0) continue
+
+      await pool.query(
+        `INSERT INTO products (
+          name, category, brand, price, original_price, discount, rating, reviews_count,
+          image, stock, delivery_days, badge, group_price, specs,
+          seller_name, seller_rating, seller_hub, seller_gstin, warranty_policy, is_brand_direct,
+          source, is_active, source_site, external_url, external_cart_url, external_id
+        ) VALUES ($1,$2,$3,$4,$5,$6,4.7,120,$7,35,2,'Live Partner',$8,$9,$10,4.8,$11,'PARTNER-SYNC','Official Brand Warranty',true,'catalog',true,$12,$13,$14,$15)`,
+        [
+          p.title.trim(),
+          category,
+          (p.vendor || host.split('.')[0]).trim(),
+          inrPrice,
+          mrp,
+          '15% OFF',
+          img,
+          Math.round((inrPrice * 0.88) / 10) * 10,
+          JSON.stringify(specs),
+          `${p.vendor || host} Official Store`,
+          `${host} Partner Hub`,
+          host,
+          productUrl,
+          cartUrl,
+          `SH-${host}-${p.id}`,
+        ]
+      )
+      insertedCount++
+    }
+
+    return res.json({
+      success: true,
+      store: host,
+      imported: insertedCount,
+      message: `Synced ${insertedCount} real products & direct cart links from ${host}!`,
+    })
+  } catch (err) {
+    console.error('Sync Shopify error:', err)
+    return res.status(500).json({ error: `Failed to sync partner store: ${err.message}` })
   }
 })
 

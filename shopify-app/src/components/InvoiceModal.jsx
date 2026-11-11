@@ -93,18 +93,21 @@ export default function InvoiceModal({ order, isOpen, onClose }) {
             <div>
               <span className="text-[10px] text-slate-400 block font-semibold">Order Number</span>
               <span className="font-mono font-bold text-slate-800 text-[11px]">{order.order_number}</span>
+              {order.external_order_id && (
+                <span className="text-[9px] text-indigo-700 font-mono block">Ext: {order.external_order_id}</span>
+              )}
             </div>
             <div>
               <span className="text-[10px] text-slate-400 block font-semibold">Payment Mode</span>
-              <span className="font-bold text-emerald-700 text-[11px]">UPI Instant (100% Paid)</span>
+              <span className="font-bold text-emerald-700 text-[11px]">{order.payment_method || 'UPI Instant'}</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 block font-semibold">Bank Txn ID</span>
-              <span className="font-mono text-slate-700 text-[10px] truncate block">{order.transaction_id || 'UPI/LIVE/VERIFIED'}</span>
+              <span className="text-[10px] text-slate-400 block font-semibold">Bank / Partner Ref</span>
+              <span className="font-mono text-slate-700 text-[10px] truncate block">{order.transaction_id || order.external_order_id || 'UPI/LIVE/VERIFIED'}</span>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 block font-semibold">Delivery Target</span>
-              <span className="font-bold text-slate-900 text-[11px]">{order.delivery_date || 'In 2 Days'}</span>
+              <span className="text-[10px] text-slate-400 block font-semibold">Fulfillment Source</span>
+              <span className="font-bold text-slate-900 text-[11px]">{order.external_site || order.delivery_date || 'Brand Direct'}</span>
             </div>
           </div>
 

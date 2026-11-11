@@ -14,6 +14,10 @@ import {
   Building2,
   FileText,
   ChevronRight,
+  ExternalLink,
+  PlusCircle,
+  Globe,
+  X,
 } from 'lucide-react'
 import { API_BASE_URL } from '../config'
 import InvoiceModal from '../components/InvoiceModal'
@@ -24,6 +28,16 @@ function Orders() {
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null)
+  const [showSyncModal, setShowSyncModal] = useState(false)
+  const [syncForm, setSyncForm] = useState({
+    externalSite: 'Amazon India',
+    externalOrderId: '',
+    productName: '',
+    totalAmount: '',
+    externalReceiptUrl: '',
+  })
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
 
   useEffect(() => {
     const saved = localStorage.getItem('currentUser')
@@ -54,28 +68,80 @@ function Orders() {
     }
   }
 
+  const handleSyncExternalOrder = async (e) => {
+    e.preventDefault()
+    if (!currentUser?.id) {
+      alert('Please Sign In first to archive external receipts.')
+      navigate('/login')
+      return
+    }
+    setSyncing(true)
+    setSyncMsg('')
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/orders/sync-external`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userEmail: currentUser.email,
+          userPhone: currentUser.phone,
+          shippingAddress: currentUser.address || 'Partner Store Delivery',
+          ...syncForm,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSyncMsg(data.error || 'Could not sync external order.')
+        return
+      }
+      setOrders((prev) => [data.order, ...prev])
+      setShowSyncModal(false)
+      setSyncForm({
+        externalSite: 'Amazon India',
+        externalOrderId: '',
+        productName: '',
+        totalAmount: '',
+        externalReceiptUrl: '',
+      })
+    } catch {
+      setSyncMsg('Network error syncing external order receipt.')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900">Your Orders & Deliveries</h1>
+              <h1 className="text-2xl font-black text-slate-900">Your Orders &amp; Receipts</h1>
               <p className="text-xs text-slate-500">
-                Connected to Direct Brand Stores via Supabase PostgreSQL <code className="bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded font-mono">orders</code>
+                ShopEase Direct, Partner Webhooks &amp; Archived External Store Receipts in Supabase
               </p>
             </div>
           </div>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2.5 rounded-2xl transition"
-          >
-            <ArrowLeft className="w-4 h-4" /> Continue Shopping
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSyncModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-2.5 rounded-2xl transition cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" /> Sync External Store Receipt
+            </button>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2.5 rounded-2xl transition"
+            >
+              <ArrowLeft className="w-4 h-4" /> Continue Shopping
+            </Link>
+          </div>
         </div>
 
         {/* User Info Badge */}
@@ -101,7 +167,7 @@ function Orders() {
           <div className="bg-white p-12 rounded-3xl text-center text-slate-500 shadow-sm border border-slate-200">
             <Package className="w-14 h-14 text-slate-300 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-slate-800">No orders placed yet!</h3>
-            <p className="text-xs text-slate-400 mt-1">Explore our 2,400+ authentic brand-direct products with UPI Instant checkout.</p>
+            <p className="text-xs text-slate-400 mt-1">Explore 425+ real verified products with UPI Instant checkout or sync external store receipts.</p>
             <Link
               to="/"
               className="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition"
@@ -149,15 +215,34 @@ function Orders() {
 
                   {/* Brand Store Dispatch Hub Banner */}
                   <div className="px-4 py-2.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Building2 className="w-4 h-4 text-indigo-400" />
-                      <span>Sourced Directly from: <strong className="text-amber-300">{brandStore}</strong></span>
+                      <span>Sourced Directly from: <strong className="text-amber-300">{order.external_site || brandStore}</strong></span>
                       <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 text-[9px] px-1.5 py-0.2 rounded font-bold">
-                        ✓ Brand Direct
+                        {order.fulfillment_mode === 'partner_webhook'
+                          ? '✓ Partner Webhook Synced'
+                          : order.fulfillment_mode === 'external_redirect_synced'
+                          ? '✓ External Receipt Archived'
+                          : '✓ Brand Direct'}
                       </span>
+                      {order.external_order_id && (
+                        <span className="font-mono text-[10px] text-amber-200 bg-white/10 px-2 py-0.5 rounded">
+                          Partner ID: {order.external_order_id}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[11px] text-slate-400">
-                      Hub: {order.brand_hub || 'National Logistics Center'}
+                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                      <span>Hub: {order.brand_hub || 'National Logistics Center'}</span>
+                      {order.external_receipt_url && (
+                        <a
+                          href={order.external_receipt_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-300 hover:text-white font-bold flex items-center gap-1"
+                        >
+                          Store Link <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
                   </div>
 
@@ -244,6 +329,109 @@ function Orders() {
         isOpen={Boolean(selectedInvoiceOrder)}
         onClose={() => setSelectedInvoiceOrder(null)}
       />
+
+      {/* Sync External Store Receipt Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h3 className="font-bold text-sm">Sync External Store Order Receipt</h3>
+                  <p className="text-[11px] text-slate-400">Save partner site order ID &amp; receipt in ShopEase DB</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSyncModal(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSyncExternalOrder} className="p-5 space-y-3 text-xs">
+              {syncMsg && (
+                <div className="p-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-semibold">
+                  {syncMsg}
+                </div>
+              )}
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Partner Website / Store</label>
+                <select
+                  value={syncForm.externalSite}
+                  onChange={(e) => setSyncForm({ ...syncForm, externalSite: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-semibold"
+                >
+                  <option>Amazon India</option>
+                  <option>Flipkart Partner</option>
+                  <option>Official Brand Website</option>
+                  <option>Nykaa / Beauty Store</option>
+                  <option>Shopify Partner Store</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">External Order ID *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 407-9283741-1122334"
+                  value={syncForm.externalOrderId}
+                  onChange={(e) => setSyncForm({ ...syncForm, externalOrderId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Product Purchased *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Product name"
+                  value={syncForm.productName}
+                  onChange={(e) => setSyncForm({ ...syncForm, productName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Total Amount Paid (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  placeholder="e.g. 1499"
+                  value={syncForm.totalAmount}
+                  onChange={(e) => setSyncForm({ ...syncForm, totalAmount: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Partner Order / Receipt URL (optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://www.amazon.in/gp/your-account/order-details..."
+                  value={syncForm.externalReceiptUrl}
+                  onChange={(e) => setSyncForm({ ...syncForm, externalReceiptUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={syncing}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {syncing ? 'Saving Receipt to Supabase...' : 'Save Partner Receipt to ShopEase'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
