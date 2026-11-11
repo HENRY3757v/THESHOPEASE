@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ShopEase — College Mini Project Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.48;
+      font-size: 10pt;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+    .cover {
+      min-height: 245mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      border: 2.5px solid #1e1b4b;
+      padding: 24px 28px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 35%, #eef2ff 100%);
+    }
+    .cover .badge {
+      display: inline-block;
+      background: #312e81;
+      color: #ffffff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 9.5pt;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .cover h1 {
+      font-size: 30pt;
+      color: #1e1b4b;
+      margin: 18px 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+    .cover h2 {
+      font-size: 13.5pt;
+      color: #4338ca;
+      font-weight: 600;
+      margin: 0 auto 18px auto;
+      max-width: 88%;
+      border: none;
+      padding: 0;
+    }
+    .cover-box {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 16px 22px;
+      margin: 14px auto;
+      width: 88%;
+      text-align: left;
+      font-size: 10pt;
+    }
+    .cover-box p {
+      margin: 6px 0;
+    }
+    h2.section-title {
+      font-size: 13.5pt;
+      color: #1e1b4b;
+      border-bottom: 2px solid #4f46e5;
+      padding-bottom: 4px;
+      margin-top: 14px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 11pt;
+      color: #312e81;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      page-break-after: avoid;
+    }
+    p {
+      margin: 4px 0 7px 0;
+      text-align: justify;
+    }
+    ul, ol {
+      margin: 4px 0 8px 0;
+      padding-left: 18px;
+    }
+    li {
+      margin-bottom: 3px;
+      text-align: justify;
+    }
+    .avoid-break {
+      page-break-inside: avoid;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 9.5pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #312e81;
+      color: #ffffff;
+      font-weight: 700;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .cert-frame {
+      border: 3px double #312e81;
+      padding: 28px 30px;
+      border-radius: 8px;
+      min-height: 225mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .cert-title {
+      text-align: center;
+      font-size: 22pt;
+      color: #1e1b4b;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border-bottom: 2px solid #4f46e5;
+      padding-bottom: 10px;
+      margin-bottom: 22px;
+    }
+    .sig-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 50px;
+      padding-top: 10px;
+      font-size: 10pt;
+      font-weight: 700;
+      color: #334155;
+    }
+    .sig-box {
+      width: 30%;
+      text-align: center;
+      border-top: 1.5px solid #475569;
+      padding-top: 6px;
+    }
+    .toc-table td {
+      border: none;
+      border-bottom: 1px dotted #cbd5e1;
+      padding: 5px 4px;
+      background: transparent !important;
+    }
+    .toc-table td.sec-no {
+      width: 48px;
+      font-weight: 700;
+      color: #4338ca;
+    }
+    .callout {
+      background: #eef2ff;
+      border-left: 4px solid #4f46e5;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 9.8pt;
+    }
+    .diagram-wrap {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      background: #f8fafc;
+      margin: 10px 0 14px 0;
+      text-align: center;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: Consolas, monospace;
+      font-size: 9pt;
+      color: #312e81;
+    }
+    .footer-note {
+      font-size: 8.5pt;
+      color: #64748b;
+      text-align: center;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== COVER PAGE ==================== -->
+  <div class="cover">
+    <div>
+      <span class="badge">College Mini Project Report • 2026</span>
+      <h1>SHOPEASE</h1>
+      <h2>A Full-Stack Cloud E-Commerce, UPI Verified Seller Marketplace &amp; Affiliate Store Aggregator</h2>
+      <p style="text-align:center; color:#475569; font-size:10pt;">
+        Submitted in partial fulfillment of the requirements for the Degree / Course Mini Project in Computer Science &amp; Engineering / Information Technology
+      </p>
+    </div>
+
+    <div class="cover-box">
+      <p><strong>Live Hosted URL:</strong> <code>https://theshopease-five.vercel.app/</code></p>
+      <p><strong>Seller Marketplace Portal:</strong> <code>https://theshopease-five.vercel.app/seller</code></p>
+      <p><strong>Source Repository:</strong> <code>https://github.com/HENRY3757v/THESHOPEASE</code></p>
+      <p><strong>Technology Stack:</strong> React 19, Vite 8, Tailwind CSS v4, Express 5, Serverless API (Vercel &amp; Cloudflare Workers), PostgreSQL (Supabase)</p>
+    </div>
+
+    <div class="cover-box">
+      <p><strong>Submitted By (Team Members):</strong></p>
+      <p>1. ___________________________ (Roll No: _______________)</p>
+      <p>2. ___________________________ (Roll No: _______________)</p>
+      <p>3. ___________________________ (Roll No: _______________)</p>
+      <p style="margin-top:10px;"><strong>Under the Guidance of:</strong> ___________________________</p>
+      <p><strong>Department &amp; Institution:</strong> ___________________________</p>
+      <p><strong>Academic Year:</strong> 2025 – 2026</p>
+    </div>
+  </div>
+
+  <!-- ==================== CERTIFICATE ==================== -->
+  <div class="page-break"></div>
+  <div class="cert-frame">
+    <div>
+      <div class="cert-title">Certificate</div>
+      <p style="font-size:11pt; line-height:1.8;">
+        This is to certify that the Mini Project report entitled <strong>“ShopEase: A Full-Stack Cloud E-Commerce, UPI Verified Seller Marketplace &amp; Affiliate Store Aggregator”</strong> is a bonafide record of independent development, cloud database engineering, and web deployment work carried out by the project team under my supervision and guidance during the academic year <strong>2025–2026</strong>.
+      </p>
+      <p style="font-size:11pt; line-height:1.8; margin-top:16px;">
+        The project has been successfully implemented, tested, and deployed live on cloud serverless infrastructure (Vercel Edge/Serverless &amp; Cloudflare Workers) backed by Supabase PostgreSQL, fulfilling the academic standards and objectives of the mini project curriculum.
+      </p>
+      <div class="callout" style="margin-top:20px;">
+        <strong>Verified Deployment Link:</strong> https://theshopease-five.vercel.app/<br />
+        <strong>Verified Codebase:</strong> https://github.com/HENRY3757v/THESHOPEASE
+      </div>
+    </div>
+
+    <div>
+      <div class="sig-row">
+        <div class="sig-box">Project Guide Signature</div>
+        <div class="sig-box">Head of Department</div>
+        <div class="sig-box">External Examiner</div>
+      </div>
+      <p class="footer-note">Date: ______________________ &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; Place: ______________________</p>
+    </div>
+  </div>
+
+  <!-- ==================== ACKNOWLEDGEMENT & ABSTRACT ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">Acknowledgement</h2>
+  <p>
+    We take this opportunity to express our sincere gratitude to our Project Guide and the Faculty Members of our Department for their continuous encouragement, insightful reviews, and technical guidance throughout the development of <strong>ShopEase</strong>. What started primarily as a college mini-project focused on learning cloud web hosting grew into a complete, revenue-ready full-stack marketplace system because of their constructive feedback.
+  </p>
+  <p>
+    We are thankful to our institution for providing the academic foundation in software engineering, database management systems, and computer networks. Finally, we acknowledge the open-source communities behind React, Vite, Tailwind CSS, Node.js, PostgreSQL, Supabase, Vercel, and Cloudflare, whose developer tooling enabled us to build and host a real-world production system.
+  </p>
+
+  <h2 class="section-title" style="margin-top:26px;">Abstract</h2>
+  <p>
+    Modern e-commerce applications demand fast user interfaces, trustworthy product metadata, frictionless digital payments, and scalable cloud hosting without heavy server maintenance costs. <strong>ShopEase</strong> is a full-stack Indian e-commerce platform and multi-vendor marketplace engineered using <strong>React 19.3</strong>, <strong>Tailwind CSS v4</strong>, <strong>Node.js / Express 5</strong> serverless functions on <strong>Vercel</strong> and <strong>Cloudflare Workers</strong>, and a cloud-hosted <strong>Supabase PostgreSQL</strong> relational database.
+  </p>
+  <p>
+    Unlike static template stores, ShopEase curates <strong>429 verified real products across 14 categories</strong> where every single product image is verified reachable via automated HTTP <code>HEAD</code> checks and paired with interactive retail widgets (multi-angle image gallery, No-Cost EMI estimator, UPI cashback calculator, review split analytics, and pincode ETA verification). Beyond standard buyer checkout via NPCI-validated UPI IDs and Phone OTP verification, ShopEase incorporates two practical monetization pillars: (1) a <strong>“Sell on ShopEase” Seller Marketplace</strong> charging a transparent <strong>₹20 per active item per day</strong> platform fee tracked in a PostgreSQL ledger, and (2) a <strong>Partner Store Bridge &amp; External Receipt Sync</strong> architecture designed for affiliate revenue with <strong>Amazon Associates India</strong> and partner webhooks.
+  </p>
+
+  <!-- ==================== TABLE OF CONTENTS ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">Table of Contents</h2>
+  <table class="toc-table">
+    <tr><td class="sec-no">—</td><td><strong>Certificate</strong></td><td style="text-align:right; font-weight:600;">2</td></tr>
+    <tr><td class="sec-no">—</td><td><strong>Acknowledgement</strong></td><td style="text-align:right; font-weight:600;">3</td></tr>
+    <tr><td class="sec-no">—</td><td><strong>Abstract</strong></td><td style="text-align:right; font-weight:600;">3</td></tr>
+    <tr><td class="sec-no">1.</td><td><strong>Introduction</strong></td><td style="text-align:right; font-weight:600;">5</td></tr>
+    <tr><td class="sec-no">2.</td><td><strong>Objectives</strong></td><td style="text-align:right; font-weight:600;">5</td></tr>
+    <tr><td class="sec-no">3.</td><td><strong>Scope of the System</strong></td><td style="text-align:right; font-weight:600;">5</td></tr>
+    <tr><td class="sec-no">4.</td><td><strong>Main Users of the System</strong></td><td style="text-align:right; font-weight:600;">6</td></tr>
+    <tr><td class="sec-no">5.</td><td><strong>Major Modules of the System</strong></td><td style="text-align:right; font-weight:600;">6</td></tr>
+    <tr><td class="sec-no">6.</td><td><strong>Working Process</strong></td><td style="text-align:right; font-weight:600;">7</td></tr>
+    <tr><td class="sec-no">7.</td><td><strong>System Flow Diagram &amp; Cloud Architecture</strong></td><td style="text-align:right; font-weight:600;">7</td></tr>
+    <tr><td class="sec-no">8.</td><td><strong>Basic Requirements (Hardware, Software &amp; Tech Stack)</strong></td><td style="text-align:right; font-weight:600;">8</td></tr>
+    <tr><td class="sec-no">9.</td><td><strong>Advantages</strong></td><td style="text-align:right; font-weight:600;">8</td></tr>
+    <tr><td class="sec-no">10.</td><td><strong>Limitations and Challenges</strong></td><td style="text-align:right; font-weight:600;">8</td></tr>
+    <tr><td class="sec-no">11.</td><td><strong>Security and Privacy</strong></td><td style="text-align:right; font-weight:600;">9</td></tr>
+    <tr><td class="sec-no">12.</td><td><strong>Future Scope (Including Amazon Associates &amp; PA-API Integration)</strong></td><td style="text-align:right; font-weight:600;">9</td></tr>
+    <tr><td class="sec-no">13.</td><td><strong>Conclusion</strong></td><td style="text-align:right; font-weight:600;">9</td></tr>
+    <tr><td class="sec-no">14.</td><td><strong>References</strong></td><td style="text-align:right; font-weight:600;">9</td></tr>
+  </table>
+
+  <!-- ==================== 1. INTRODUCTION & 2. OBJECTIVES ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">1. Introduction</h2>
+  <p>
+    The rapid expansion of Unified Payments Interface (UPI) and affordable mobile internet in India has transformed digital retail. However, building an e-commerce platform that works reliably in real-world conditions requires far more than rendering static product cards. Small developers and student teams face three critical bottlenecks: managing backend infrastructure costs, preventing broken or mismatched product imagery, and establishing a sustainable monetization model.
+  </p>
+  <p>
+    <strong>ShopEase</strong> addresses these challenges through a serverless-first architecture. Originally initiated as a college mini-project focused on full-stack cloud hosting, ShopEase matured into a dual-model marketplace combining direct-to-consumer UPI sales, OTP-authenticated local seller onboarding, and an external brand/affiliate website bridge. Every transaction, OTP challenge, UPI VPA, seller listing, and daily fee ledger entry persists in a cloud-managed PostgreSQL database on Supabase, served over HTTPS through Vercel Serverless Functions and an equivalent Cloudflare Workers runtime.
+  </p>
+
+  <h2 class="section-title">2. Objectives</h2>
+  <ul>
+    <li><strong>Cloud-Native Serverless Hosting:</strong> Deploy a zero-downtime SPA frontend and stateless REST API on Vercel and Cloudflare Workers backed by Supabase PostgreSQL Transaction Pooler.</li>
+    <li><strong>Verified Original Product Catalog:</strong> Maintain a large catalog (429+ items across 14 categories) where every item displays its own unique, HTTP-verified product photograph, realistic Indian INR pricing, multi-image gallery, and source website link.</li>
+    <li><strong>Authentic UPI &amp; Phone OTP Verification:</strong> Enforce SHA-256 hashed 6-digit phone OTP authentication and NPCI bank handle validation (<code>@okicici</code>, <code>@ybl</code>, <code>@paytm</code>, etc.) before linking UPI accounts or opening seller stores.</li>
+    <li><strong>Sustainable Revenue Architecture:</strong> Support direct seller subscriptions at <strong>₹20/item/day</strong> paid via Admin UPI QR and affiliate link tracking ready for <strong>Amazon Associates India</strong>.</li>
+    <li><strong>Unified Order Tracking &amp; Tax Invoices:</strong> Provide printable GST-style warranty invoices, partner webhook order forwarding, and external order receipt archiving inside one unified Orders portal.</li>
+  </ul>
+
+  <h2 class="section-title">3. Scope of the System</h2>
+  <p>
+    The scope of ShopEase spans customer discovery, marketplace onboarding, digital payment recording, and affiliate store bridging:
+  </p>
+  <ul>
+    <li><strong>B2C Storefront:</strong> Responsive desktop/mobile shopping interface with live search, category pills, brand filters, price/rating sorting, wishlist persistence, 3-item side-by-side comparison, and 12% Dosti Group Deals.</li>
+    <li><strong>Multi-Vendor Seller Marketplace:</strong> Dedicated <code>/seller</code> portal enabling verified Indian sellers to list, pause, or delete products with instant daily ₹20/item fee calculation and UPI QR settlement.</li>
+    <li><strong>Partner Store &amp; Affiliate Bridge:</strong> Links products to official partner websites (<code>external_url</code>), logs click redirects, imports cooperating Shopify store feeds (<code>/api/catalog/sync-shopify</code>), and records external store receipts.</li>
+    <li><strong>Out of Scope:</strong> Automated silent purchasing inside third-party platforms (such as Amazon or Flipkart) without buyer 2FA/payment authorization, and physical courier fleet management.</li>
+  </ul>
+
+  <!-- ==================== 4. MAIN USERS & 5. MAJOR MODULES ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">4. Main Users of the System</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%;">User Role</th>
+        <th style="width:43%;">Primary Responsibilities &amp; Capabilities</th>
+        <th style="width:35%;">System Entry Points</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Customer / Buyer</strong></td>
+        <td>Register/login, browse 429+ verified items, compare specs, check pincode ETA, use EMI/cashback widgets, activate Dosti deals, verify UPI via Phone OTP, place UPI orders, view Tax Invoices, or visit partner stores &amp; sync external receipts.</td>
+        <td><code>/</code>, <code>/shop</code>, <code>/orders</code>, <code>/login</code>, <code>/register</code></td>
+      </tr>
+      <tr>
+        <td><strong>2. Verified Seller</strong></td>
+        <td>Authenticate mobile via 6-digit OTP, register store with GSTIN/hub details, publish items with real image URLs, pause/resume listings, optional webhook integration, and pay ₹20/item/day app fee via UPI QR.</td>
+        <td><code>/seller</code> (Seller Marketplace Portal)</td>
+      </tr>
+      <tr>
+        <td><strong>3. Platform Admin</strong></td>
+        <td>Monitor total ₹20/item/day revenue ledger, active seller items, daily projected collections, seed/sync catalog sources, and configure SMS/Affiliate environment variables.</td>
+        <td><code>/api/seller/platform-revenue</code>, <code>/api/catalog/sync-shopify</code></td>
+      </tr>
+      <tr>
+        <td><strong>4. Partner Brand Stores</strong></td>
+        <td>Receive buyer referral traffic via <code>external_url</code> affiliate bridge or automated REST order payloads via <code>store_webhook_url</code>.</td>
+        <td>External URLs &amp; Partner Webhooks</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="section-title">5. Major Modules of the System</h2>
+  <ol>
+    <li><strong>User Authentication &amp; Profile Module:</strong> Handles registration and login (<code>Login.jsx</code>, <code>Register.jsx</code>) with <code>bcryptjs</code> password hashing and persistent local session context.</li>
+    <li><strong>Catalog &amp; Interactive Widgets Module:</strong> Serves paginated, filtered, and sorted items from PostgreSQL (<code>/api/products</code>, <code>/api/categories</code>, <code>/api/brands</code>). Renders multi-image gallery switcher, No-Cost EMI calculator (3/6/12 months), 5% UPI cashback preview, and 5★–1★ review breakdown bars inside <code>ProductDetailModal.jsx</code>.</li>
+    <li><strong>Cart, Wishlist &amp; Dosti Group Deal Module:</strong> Supports standard cart items alongside 12% discounted group-buy deals (<code>DostiDealModal.jsx</code>) and 3-product spec comparison (<code>CompareModal.jsx</code>).</li>
+    <li><strong>Phone OTP &amp; NPCI UPI Verification Module:</strong> Generates cryptographically random 6-digit OTPs stored as SHA-256 hashes in <code>phone_otps</code> (5-minute TTL, 5-attempt cap), validates 30+ NPCI VPA bank handles, generates live UPI deep-link QR codes, and captures UTR transaction references (<code>UpiPaymentModal.jsx</code>).</li>
+    <li><strong>Seller Marketplace &amp; Fee Ledger Module:</strong> Onboards OTP-verified sellers, inserts seller items into <code>products</code> (<code>source = 'seller'</code>), calculates active-item daily billing at ₹20/item/day, and records Admin UPI settlements in <code>seller_fee_ledger</code>.</li>
+    <li><strong>Partner Website Bridge &amp; Order/Invoice Module:</strong> Logs outbound store redirects (<code>/api/bridge/redirect</code>), dispatches partner webhooks on order placement, imports external partner receipts (<code>/api/orders/sync-external</code>), and generates printable Tax Invoices with QR warranty seals (<code>InvoiceModal.jsx</code>).</li>
+  </ol>
+
+  <!-- ==================== 6. WORKING PROCESS ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">6. Working Process</h2>
+  <h3>6.1 Buyer Shopping, UPI Checkout &amp; Store Bridge Workflow</h3>
+  <ol>
+    <li><strong>Discovery:</strong> User visits ShopEase, filters by 14 categories or searches by brand/keyword. Backend queries Supabase PostgreSQL and returns paginated real products.</li>
+    <li><strong>Inspection:</strong> Clicking any product opens <code>ProductDetailModal</code> showing multi-angle gallery thumbnails, seller hub/GSTIN, EMI options, review distribution, and pincode ETA.</li>
+    <li><strong>Checkout Choice:</strong>
+      <ul>
+        <li><em>Path A (Native ShopEase UPI Checkout):</em> User adds items to cart or clicks <em>Buy with UPI</em>. For first-time UPI linking, user enters a valid NPCI VPA and authenticates their mobile number via 6-digit Phone OTP. Upon UPI/QR UTR confirmation, <code>POST /api/orders</code> saves the order, checks if the seller has a <code>store_webhook_url</code> (forwarding the order if present), and displays a printable Tax Invoice.</li>
+        <li><em>Path B (Original Partner Website Bridge):</em> User clicks <em>Visit Original Store Website</em>. ShopEase logs the redirect in <code>external_redirects</code> and opens the merchant’s product URL. After completing checkout on that website, the user can save their Partner Order ID and receipt inside <code>/orders</code> via <em>Sync External Store Receipt</em>.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h3>6.2 Seller Onboarding &amp; ₹20/Item/Day Billing Workflow</h3>
+  <ol>
+    <li>Seller opens <code>/seller</code>, enters store/owner/GSTIN/hub/UPI details, and triggers <strong>Send OTP</strong> (<code>POST /api/otp/send</code>).</li>
+    <li>Upon 6-digit OTP verification (<code>POST /api/otp/verify</code>), seller account is activated in <code>sellers</code>.</li>
+    <li>Seller publishes real products with verified photo URLs; items immediately appear in the live ShopEase catalog.</li>
+    <li>System calculates daily fee (<code>Active Items × ₹20</code>). Seller scans the Admin Platform UPI QR code and submits the UTR transaction ID, updating <code>seller_fee_ledger</code> and platform revenue analytics.</li>
+  </ol>
+
+  <!-- ==================== 7. SYSTEM FLOW DIAGRAM ==================== -->
+  <div class="avoid-break">
+  <h2 class="section-title">7. System Flow Diagram &amp; Cloud Architecture</h2>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 760 400" width="100%" xmlns="http://www.w3.org/2000/svg" style="max-height:285px;">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#4338ca" />
+        </marker>
+      </defs>
+
+      <!-- Client Tier -->
+      <rect x="20" y="18" width="200" height="86" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2" />
+      <text x="120" y="42" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e1b4b">Client SPA (React 19 + Vite)</text>
+      <text x="120" y="60" text-anchor="middle" font-size="10" fill="#334155">Shop • Cart • Compare • Dosti Deal</text>
+      <text x="120" y="75" text-anchor="middle" font-size="10" fill="#334155">Orders &amp; Invoice • Seller Portal</text>
+      <text x="120" y="90" text-anchor="middle" font-size="9" fill="#4338ca">Hosted on Vercel CDN / Pages</text>
+
+      <!-- API Gateway Tier -->
+      <rect x="280" y="18" width="210" height="86" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" />
+      <text x="385" y="42" text-anchor="middle" font-size="12" font-weight="bold" fill="#0e7490">Serverless REST API (21 Routes)</text>
+      <text x="385" y="60" text-anchor="middle" font-size="10" fill="#334155">Vercel Express /api/* &amp;</text>
+      <text x="385" y="75" text-anchor="middle" font-size="10" fill="#334155">Cloudflare Worker (nodejs_compat)</text>
+      <text x="385" y="90" text-anchor="middle" font-size="9" fill="#0e7490">Auth • OTP • UPI • Orders • Bridge</text>
+
+      <!-- Supabase DB Tier -->
+      <rect x="545" y="18" width="195" height="150" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" />
+      <text x="642" y="42" text-anchor="middle" font-size="12" font-weight="bold" fill="#14532d">Supabase PostgreSQL</text>
+      <text x="642" y="62" text-anchor="middle" font-size="9.5" fill="#166534">• users &amp; upi_accounts</text>
+      <text x="642" y="78" text-anchor="middle" font-size="9.5" fill="#166534">• products (429+ verified)</text>
+      <text x="642" y="94" text-anchor="middle" font-size="9.5" fill="#166534">• orders &amp; receipts</text>
+      <text x="642" y="110" text-anchor="middle" font-size="9.5" fill="#166534">• phone_otps (SHA-256)</text>
+      <text x="642" y="126" text-anchor="middle" font-size="9.5" fill="#166534">• sellers &amp; seller_fee_ledger</text>
+      <text x="642" y="142" text-anchor="middle" font-size="9.5" fill="#166534">• external_redirects</text>
+      <text x="642" y="158" text-anchor="middle" font-size="8.5" fill="#15803d">Transaction Pooler :6543 SSL</text>
+
+      <!-- Branching Workflows -->
+      <rect x="20" y="160" width="215" height="92" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" />
+      <text x="127" y="182" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#9a3412">1. Phone OTP &amp; NPCI UPI Flow</text>
+      <text x="127" y="200" text-anchor="middle" font-size="9.5" fill="#334155">Fast2SMS / Twilio / Sandbox OTP</text>
+      <text x="127" y="216" text-anchor="middle" font-size="9.5" fill="#334155">30+ NPCI Handle Validation</text>
+      <text x="127" y="232" text-anchor="middle" font-size="9.5" fill="#334155">UPI QR Deep Link + UTR Capture</text>
+
+      <rect x="275" y="160" width="220" height="92" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="2" />
+      <text x="385" y="182" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#831843">2. Seller Portal (₹20/Item/Day)</text>
+      <text x="385" y="200" text-anchor="middle" font-size="9.5" fill="#334155">OTP Verified Merchant Onboarding</text>
+      <text x="385" y="216" text-anchor="middle" font-size="9.5" fill="#334155">Publish / Pause / Delete Listings</text>
+      <text x="385" y="232" text-anchor="middle" font-size="9.5" fill="#334155">Admin UPI Fee Settlement Ledger</text>
+
+      <rect x="130" y="295" width="490" height="82" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2" />
+      <text x="375" y="317" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#0f172a">3. External Partner Website Bridge &amp; Catalog Ingestion</text>
+      <text x="375" y="335" text-anchor="middle" font-size="9.5" fill="#334155">Open Sources (DummyJSON / FakeStore / Platzi / Brand Feeds) → Image HEAD Check → Catalog</text>
+      <text x="375" y="352" text-anchor="middle" font-size="9.5" fill="#334155">Outbound Store Redirects + Seller Webhook Forwarding + External Receipt Sync (/orders)</text>
+      <text x="375" y="368" text-anchor="middle" font-size="9" font-weight="bold" fill="#4338ca">Ready for Amazon Associates India Tag &amp; Creators/PA-API Live Sync</text>
+
+      <!-- Arrows -->
+      <line x1="220" y1="60" x2="278" y2="60" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow)" />
+      <line x1="490" y1="60" x2="543" y2="60" stroke="#4338ca" stroke-width="2" marker-end="url(#arrow)" />
+      <line x1="330" y1="104" x2="155" y2="158" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow)" />
+      <line x1="385" y1="104" x2="385" y2="158" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow)" />
+      <line x1="385" y1="252" x2="385" y2="293" stroke="#4338ca" stroke-width="1.8" marker-end="url(#arrow)" />
+      <line x1="642" y1="168" x2="550" y2="293" stroke="#16a34a" stroke-width="1.8" marker-end="url(#arrow)" />
+    </svg>
+  </div>
+  </div>
+
+  <!-- ==================== 8. BASIC REQUIREMENTS & 9. ADVANTAGES ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">8. Basic Requirements</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28%;">Category</th>
+        <th style="width:72%;">Specification &amp; Verified Versions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Frontend Framework</strong></td>
+        <td>React <code>19.3.1</code>, React Router DOM <code>7.18.5</code>, Vite <code>8.3.5</code>, Tailwind CSS <code>4.3.3</code>, Lucide Icons <code>1.66.0</code></td>
+      </tr>
+      <tr>
+        <td><strong>Backend &amp; Runtime</strong></td>
+        <td>Node.js (v20/v22 LTS), Express <code>5.3.0</code>, <code>pg 8.23.1</code>, <code>bcryptjs 3.0.3</code>, native <code>crypto</code> (SHA-256)</td>
+      </tr>
+      <tr>
+        <td><strong>Cloud Database</strong></td>
+        <td>Supabase Managed PostgreSQL (Transaction Pooler SSL on port <code>6543</code>, 8 relational tables)</td>
+      </tr>
+      <tr>
+        <td><strong>Cloud Hosting</strong></td>
+        <td>Vercel (SPA + Serverless <code>/api/*</code>) and Cloudflare Workers / Pages (<code>nodejs_compat</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Developer Hardware</strong></td>
+        <td>Any modern dual-core CPU, 4 GB+ RAM, 1 GB disk space, broadband internet &amp; Git</td>
+      </tr>
+      <tr>
+        <td><strong>Client Requirements</strong></td>
+        <td>Any modern desktop or mobile web browser (Chrome, Edge, Safari, Firefox) + optional UPI app for QR scan</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="section-title">9. Advantages</h2>
+  <ul>
+    <li><strong>Zero-Maintenance Cloud Scaling:</strong> Serverless execution on Vercel and Cloudflare removes idle VPS costs while scaling cleanly with traffic spikes.</li>
+    <li><strong>Authentic Visual Integrity:</strong> Automated HTTP <code>HEAD</code> validation during seeding guarantees that every single one of the 429 products displays a valid, unique product photograph.</li>
+    <li><strong>Dual Revenue Streams:</strong> Combines recurring daily marketplace SaaS revenue (₹20/item/day from local sellers) with zero-inventory affiliate commissions from external stores.</li>
+    <li><strong>Real Indian Payment Ergonomics:</strong> Validates 30+ real NPCI UPI handles, generates scannable QR codes, tracks UTR references, and produces printable GST invoices.</li>
+    <li><strong>Multi-Runtime Portability:</strong> Identical business logic runs cleanly on both Express/Vercel and dependency-light Cloudflare Workers.</li>
+  </ul>
+
+  <h2 class="section-title">10. Limitations and Challenges</h2>
+  <ul>
+    <li><strong>Third-Party Checkout Boundary:</strong> External platforms such as Amazon India and Flipkart prohibit automated silent cart/order placement via external servers due to buyer login, RBI 2FA, and anti-bot protections. External purchases must be completed on the partner website and optionally synced back via Order ID.</li>
+    <li><strong>PA-API Eligibility Threshold:</strong> Amazon India requires initial qualifying affiliate sales (typically 3–10 orders in 30 days) before unlocking live PA-API / Creators API credentials.</li>
+    <li><strong>SMS OTP Gateway Regulation:</strong> In production India telecom networks, sending live SMS OTPs via Fast2SMS or Twilio requires TRAI DLT entity/template approval; until configured via environment variables, the app operates in a safe Sandbox OTP mode.</li>
+    <li><strong>Serverless Connection Churn:</strong> Serverless functions open short-lived connections to PostgreSQL, mitigated via Supabase’s Transaction Pooler (port 6543).</li>
+  </ul>
+
+  <!-- ==================== 11. SECURITY, 12. FUTURE SCOPE, 13. CONCLUSION, 14. REFERENCES ==================== -->
+  <div class="page-break"></div>
+  <h2 class="section-title">11. Security and Privacy</h2>
+  <ul>
+    <li><strong>Password Hashing:</strong> User credentials are salted and hashed with <code>bcryptjs</code> (cost factor 10) before database storage; plaintext passwords are never persisted.</li>
+    <li><strong>Cryptographic Phone OTP:</strong> 6-digit OTPs are generated via <code>crypto.randomInt</code>, hashed using SHA-256 tied to phone and purpose, automatically expire after 5 minutes, and lock after 5 failed verification attempts.</li>
+    <li><strong>Parameterized SQL Queries:</strong> Every PostgreSQL statement uses positional parameters (<code>$1, $2, ...</code>) to prevent SQL injection attacks.</li>
+    <li><strong>UPI VPA Verification:</strong> Strict client + server regex and NPCI handle allowlist prevent malformed or spoofed payment addresses.</li>
+    <li><strong>Secret Isolation:</strong> Sensitive API tokens (SMS gateways, Amazon Partner Tag / Creators API keys) are designed exclusively for Vercel/Cloudflare Environment Variables rather than client bundles.</li>
+  </ul>
+
+  <h2 class="section-title">12. Future Scope (With Amazon Associates &amp; PA-API Integration)</h2>
+  <ul>
+    <li><strong>Phase 1 — Amazon Associates India Commission Tagging:</strong> Register on <code>affiliate-program.amazon.in</code>, add <code>AMAZON_PARTNER_TAG</code> to Vercel/Cloudflare environment variables, and dynamically append tracking tags to every Amazon outbound click to earn 1%–10% referral commission.</li>
+    <li><strong>Phase 2 — Amazon PA-API / Creators API Live Catalog Sync:</strong> Upon completing initial qualifying sales, connect Access Key &amp; Secret Key (or OAuth 2.0 Creators API credentials) to sync thousands of live Amazon India ASINs, real-time deal prices, and direct <code>amazon.in/gp/aws/cart/add.html</code> cart-pre-fill URLs.</li>
+    <li><strong>Phase 3 — Multi-Network Affiliate &amp; Price Comparison:</strong> Integrate Cuelinks/EarnKaro feeds alongside Flipkart and D2C Shopify stores so users can compare live prices across Amazon, Flipkart, and local ShopEase sellers on one screen.</li>
+    <li><strong>Phase 4 — ONDC (Beckn Protocol) &amp; Live DLT SMS:</strong> Adopt ONDC Buyer App APIs for standardized cross-seller order execution and activate Fast2SMS/Twilio live telecom OTP delivery.</li>
+  </ul>
+
+  <h2 class="section-title">13. Conclusion</h2>
+  <p>
+    <strong>ShopEase</strong> successfully demonstrates how a college mini-project centered on cloud web hosting can be architected into a comprehensive, production-grade e-commerce ecosystem. By uniting React 19, Tailwind CSS v4, dual serverless backends (Vercel and Cloudflare Workers), and Supabase PostgreSQL, the system delivers fast catalog browsing across 429 verified real products, OTP-secured UPI transactions, a ₹20/item/day seller marketplace, and a practical bridge toward real affiliate monetization with Amazon Associates India.
+  </p>
+
+  <h2 class="section-title">14. References</h2>
+  <ol>
+    <li>React Official Documentation — <em>https://react.dev/</em></li>
+    <li>Vite Build Tool &amp; Tailwind CSS v4 Documentation — <em>https://vite.dev/</em> &amp; <em>https://tailwindcss.com/</em></li>
+    <li>Express.js &amp; Node-Postgres (<code>pg</code>) Documentation — <em>https://expressjs.com/</em> &amp; <em>https://node-postgres.com/</em></li>
+    <li>Supabase PostgreSQL &amp; Connection Pooling Docs — <em>https://supabase.com/docs</em></li>
+    <li>Vercel Serverless Functions &amp; Cloudflare Workers Docs — <em>https://vercel.com/docs</em> &amp; <em>https://developers.cloudflare.com/workers/</em></li>
+    <li>Amazon Associates India &amp; Creators / Product Advertising API Documentation — <em>https://affiliate-program.amazon.in/</em></li>
+    <li>NPCI UPI Linking Specifications &amp; Open Catalog APIs (DummyJSON, FakeStoreAPI, Platzi, MakeupAPI).</li>
+  </ol>
+
+</body>
+</html>
