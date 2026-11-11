@@ -116,9 +116,21 @@ router.get('/users', async (req, res) => {
   }
 })
 
-// 4. CREATE NEW ORDER
+// 4. CREATE NEW ORDER (With UPI / Payment info)
 router.post('/orders', async (req, res) => {
-  const { userId, userName, userEmail, userPhone, shippingAddress, items, totalAmount, deliveryDays = 3 } = req.body
+  const {
+    userId,
+    userName,
+    userEmail,
+    userPhone,
+    shippingAddress,
+    items,
+    totalAmount,
+    deliveryDays = 2,
+    paymentMethod = 'UPI',
+    upiId = '',
+    transactionId = '',
+  } = req.body
 
   if (!userId || !items || items.length === 0 || !totalAmount) {
     return res.status(400).json({ error: 'Missing required order details.' })
@@ -126,13 +138,14 @@ router.post('/orders', async (req, res) => {
 
   try {
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
+    const txn = transactionId || `UPI-${Date.now().toString().slice(-8)}-${Math.floor(1000 + Math.random() * 9000)}`
     const deliveryDateObj = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000)
     const deliveryDate = deliveryDateObj.toISOString().split('T')[0]
 
     const result = await pool.query(
       `INSERT INTO orders 
-      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, upi_id, transaction_id, payment_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
       [
         orderNumber,
         userId,
@@ -144,6 +157,10 @@ router.post('/orders', async (req, res) => {
         totalAmount,
         deliveryDate,
         'Placed',
+        paymentMethod,
+        upiId,
+        txn,
+        'Completed',
       ]
     )
 
@@ -151,7 +168,7 @@ router.post('/orders', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Order placed successfully!',
+      message: 'Order placed & paid successfully via UPI!',
       order: {
         id: orderId,
         orderNumber,
@@ -160,6 +177,10 @@ router.post('/orders', async (req, res) => {
         totalAmount,
         deliveryDate,
         status: 'Placed',
+        paymentMethod,
+        upiId,
+        transactionId: txn,
+        paymentStatus: 'Completed',
         items,
       },
     })
@@ -275,6 +296,72 @@ router.get('/brands', async (req, res) => {
   } catch (err) {
     console.error('Fetch brands error:', err)
     res.status(500).json({ error: 'Failed to retrieve brands.' })
+  }
+})
+
+// 9. GET USER UPI ACCOUNTS
+router.get('/upi', async (req, res) => {
+  const { userId } = req.query
+  if (!userId) return res.status(400).json({ error: 'userId is required' })
+  try {
+    const result = await pool.query(
+      'SELECT * FROM upi_accounts WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    console.error('Fetch UPI error:', err)
+    res.status(500).json({ error: 'Failed to retrieve UPI accounts.' })
+  }
+})
+
+// 10. CONNECT NEW UPI ACCOUNT
+router.post('/upi', async (req, res) => {
+  const { userId, upiId, provider = 'Google Pay', accountName } = req.body
+
+  if (!userId || !upiId) {
+    return res.status(400).json({ error: 'userId and upiId are required.' })
+  }
+
+  if (!upiId.includes('@')) {
+    return res.status(400).json({ error: 'Invalid UPI format. Must contain @ (e.g. 9876543210@paytm or user@okhdfcbank).' })
+  }
+
+  try {
+    const existing = await pool.query(
+      'SELECT id FROM upi_accounts WHERE user_id = $1 AND upi_id = $2',
+      [userId, upiId.trim()]
+    )
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'This UPI ID is already connected to your account.' })
+    }
+
+    const result = await pool.query(
+      `INSERT INTO upi_accounts (user_id, upi_id, provider, account_name, is_verified) 
+       VALUES ($1, $2, $3, $4, true) RETURNING *`,
+      [userId, upiId.trim(), provider, accountName || 'Verified Account']
+    )
+
+    return res.status(201).json({
+      success: true,
+      message: 'UPI ID connected & verified successfully!',
+      upiAccount: result.rows[0],
+    })
+  } catch (err) {
+    console.error('Save UPI error:', err)
+    return res.status(500).json({ error: 'Failed to save UPI account.' })
+  }
+})
+
+// 11. REMOVE UPI ACCOUNT
+router.delete('/upi/:id', async (req, res) => {
+  const { id } = req.params
+  try {
+    await pool.query('DELETE FROM upi_accounts WHERE id = $1', [id])
+    res.json({ success: true, message: 'UPI account removed.' })
+  } catch (err) {
+    console.error('Delete UPI error:', err)
+    res.status(500).json({ error: 'Failed to delete UPI account.' })
   }
 })
 

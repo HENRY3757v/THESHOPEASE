@@ -48,16 +48,13 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    // Check if user already exists
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email])
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'An account with this email already exists.' })
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Insert user
     const result = await pool.query(
       `INSERT INTO users (name, email, phone, address, password) 
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
@@ -122,7 +119,7 @@ app.post('/api/login', async (req, res) => {
   }
 })
 
-// 3. GET ALL USERS (To view stored database records)
+// 3. GET ALL USERS
 app.get('/api/users', async (req, res) => {
   try {
     const result = await pool.query(
@@ -135,9 +132,21 @@ app.get('/api/users', async (req, res) => {
   }
 })
 
-// 4. CREATE NEW ORDER (Linked to user)
+// 4. CREATE NEW ORDER (With UPI / Payment info)
 app.post('/api/orders', async (req, res) => {
-  const { userId, userName, userEmail, userPhone, shippingAddress, items, totalAmount, deliveryDays = 3 } = req.body
+  const {
+    userId,
+    userName,
+    userEmail,
+    userPhone,
+    shippingAddress,
+    items,
+    totalAmount,
+    deliveryDays = 2,
+    paymentMethod = 'UPI',
+    upiId = '',
+    transactionId = '',
+  } = req.body
 
   if (!userId || !items || items.length === 0 || !totalAmount) {
     return res.status(400).json({ error: 'Missing required order details.' })
@@ -145,15 +154,14 @@ app.post('/api/orders', async (req, res) => {
 
   try {
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`
-    
-    // Calculate estimated delivery date
+    const txn = transactionId || `UPI-${Date.now().toString().slice(-8)}-${Math.floor(1000 + Math.random() * 9000)}`
     const deliveryDateObj = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000)
     const deliveryDate = deliveryDateObj.toISOString().split('T')[0]
 
     const result = await pool.query(
       `INSERT INTO orders 
-      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      (order_number, user_id, user_name, user_email, user_phone, shipping_address, items_summary, total_amount, delivery_date, status, payment_method, upi_id, transaction_id, payment_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
       [
         orderNumber,
         userId,
@@ -165,15 +173,19 @@ app.post('/api/orders', async (req, res) => {
         totalAmount,
         deliveryDate,
         'Placed',
+        paymentMethod,
+        upiId,
+        txn,
+        'Completed',
       ]
     )
 
     const orderId = result.rows[0].id
-    console.log(`[ORDER CREATED] ${orderNumber} for ${userName} (${userEmail}) - Total: ₹${totalAmount}`)
+    console.log(`[ORDER CREATED] ${orderNumber} for ${userName} (${userEmail}) via ${paymentMethod} (${upiId}) - Total: ₹${totalAmount}`)
 
     return res.status(201).json({
       success: true,
-      message: 'Order placed successfully!',
+      message: 'Order placed & paid successfully via UPI!',
       order: {
         id: orderId,
         orderNumber,
@@ -182,6 +194,10 @@ app.post('/api/orders', async (req, res) => {
         totalAmount,
         deliveryDate,
         status: 'Placed',
+        paymentMethod,
+        upiId,
+        transactionId: txn,
+        paymentStatus: 'Completed',
         items,
       },
     })
@@ -191,7 +207,7 @@ app.post('/api/orders', async (req, res) => {
   }
 })
 
-// 5. GET ORDERS (Optionally filter by userId or get all)
+// 5. GET ORDERS
 app.get('/api/orders', async (req, res) => {
   const { userId } = req.query
 
@@ -212,7 +228,7 @@ app.get('/api/orders', async (req, res) => {
   }
 })
 
-// 6. GET PRODUCTS (Paginated with search, category & sort)
+// 6. GET PRODUCTS
 app.get('/api/products', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1)
@@ -243,18 +259,15 @@ app.get('/api/products', async (req, res) => {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-    // Sorting
     let orderBy = 'ORDER BY id ASC'
     if (sortBy === 'price_low') orderBy = 'ORDER BY price ASC'
     else if (sortBy === 'price_high') orderBy = 'ORDER BY price DESC'
     else if (sortBy === 'rating') orderBy = 'ORDER BY rating DESC'
     else if (sortBy === 'discount') orderBy = "ORDER BY CAST(REPLACE(discount, '% OFF', '') AS INTEGER) DESC"
 
-    // Total count query
     const countResult = await pool.query(`SELECT COUNT(*) as count FROM products ${whereClause}`, params)
     const totalCount = parseInt(countResult.rows[0].count, 10)
 
-    // Data query with LIMIT & OFFSET
     const dataQuery = `SELECT * FROM products ${whereClause} ${orderBy} LIMIT $${paramIndex++} OFFSET $${paramIndex++}`
     const dataResult = await pool.query(dataQuery, [...params, limit, offset])
 
@@ -271,7 +284,7 @@ app.get('/api/products', async (req, res) => {
   }
 })
 
-// 7. GET CATEGORIES (With counts)
+// 7. GET CATEGORIES
 app.get('/api/categories', async (req, res) => {
   try {
     const result = await pool.query(
@@ -284,7 +297,7 @@ app.get('/api/categories', async (req, res) => {
   }
 })
 
-// 8. GET BRANDS (Filtered optionally by category)
+// 8. GET BRANDS
 app.get('/api/brands', async (req, res) => {
   const { category } = req.query
   try {
@@ -300,6 +313,72 @@ app.get('/api/brands', async (req, res) => {
   } catch (err) {
     console.error('Fetch brands error:', err)
     res.status(500).json({ error: 'Failed to retrieve brands.' })
+  }
+})
+
+// 9. GET USER UPI ACCOUNTS
+app.get('/api/upi', async (req, res) => {
+  const { userId } = req.query
+  if (!userId) return res.status(400).json({ error: 'userId is required' })
+  try {
+    const result = await pool.query(
+      'SELECT * FROM upi_accounts WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    console.error('Fetch UPI error:', err)
+    res.status(500).json({ error: 'Failed to retrieve UPI accounts.' })
+  }
+})
+
+// 10. CONNECT NEW UPI ACCOUNT
+app.post('/api/upi', async (req, res) => {
+  const { userId, upiId, provider = 'Google Pay', accountName } = req.body
+
+  if (!userId || !upiId) {
+    return res.status(400).json({ error: 'userId and upiId are required.' })
+  }
+
+  if (!upiId.includes('@')) {
+    return res.status(400).json({ error: 'Invalid UPI format. Must contain @ (e.g. 9876543210@paytm or user@okhdfcbank).' })
+  }
+
+  try {
+    const existing = await pool.query(
+      'SELECT id FROM upi_accounts WHERE user_id = $1 AND upi_id = $2',
+      [userId, upiId.trim()]
+    )
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'This UPI ID is already connected to your account.' })
+    }
+
+    const result = await pool.query(
+      `INSERT INTO upi_accounts (user_id, upi_id, provider, account_name, is_verified) 
+       VALUES ($1, $2, $3, $4, true) RETURNING *`,
+      [userId, upiId.trim(), provider, accountName || 'Verified Account']
+    )
+
+    return res.status(201).json({
+      success: true,
+      message: 'UPI ID connected & verified successfully!',
+      upiAccount: result.rows[0],
+    })
+  } catch (err) {
+    console.error('Save UPI error:', err)
+    return res.status(500).json({ error: 'Failed to save UPI account.' })
+  }
+})
+
+// 11. REMOVE UPI ACCOUNT
+app.delete('/api/upi/:id', async (req, res) => {
+  const { id } = req.params
+  try {
+    await pool.query('DELETE FROM upi_accounts WHERE id = $1', [id])
+    res.json({ success: true, message: 'UPI account removed.' })
+  } catch (err) {
+    console.error('Delete UPI error:', err)
+    res.status(500).json({ error: 'Failed to delete UPI account.' })
   }
 })
 
