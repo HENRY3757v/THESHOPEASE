@@ -4,7 +4,8 @@
   "main": "shopify-backend/server.js",
   "type": "module",
   "scripts": {
-    "start": "node shopify-backend/server.js"
+    "start": "node shopify-backend/server.js",
+    "build": "cd shopify-app && npm install && npm run build"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

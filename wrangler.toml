@@ -1,0 +1,13 @@
+name = "theshopease"
+main = "shopify-app/cloudflare-worker.js"
+compatibility_date = "2026-11-10"
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "cd shopify-app && npm install && npm run build"
+
+[assets]
+directory = "./shopify-app/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
